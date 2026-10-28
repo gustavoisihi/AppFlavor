@@ -48,8 +48,8 @@ builder.Services.AddScoped<IPedidoService, PedidoService>();
 
 var app = builder.Build();
 
-await IdentitySeeder.SeedAsync(app.Services, app.Configuration);
-await CardapioSeeder.SeedAsync(app.Services);
+//await IdentitySeeder.SeedAsync(app.Services, app.Configuration);
+//await CardapioSeeder.SeedAsync(app.Services);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

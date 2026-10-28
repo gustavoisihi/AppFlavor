@@ -23,43 +23,57 @@
 
 @if (editando)
 {
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">
-                @(adicional.Id == 0 ? "Novo adicional" : "Editar adicional")
-            </h5>
+    <div class="modal-produto-fundo">
+        <div class="modal-produto-conteudo">
+            <div class="modal-produto-cabecalho">
+                <h5 class="mb-0">
+                    @(adicional.Id == 0 ? "Novo adicional" : "Editar adicional")
+                </h5>
 
-            <EditForm Model="adicional" OnValidSubmit="SalvarAsync">
-                <DataAnnotationsValidator />
-
-                <div class="mb-3">
-                    <label class="form-label">Nome</label>
-                    <InputText class="form-control" @bind-Value="adicional.Nome" />
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Preço (R$)</label>
-                    <InputNumber class="form-control" @bind-Value="adicional.Preco" step="0.01" min="0" />
-                </div>
-
-                <div class="form-check mb-2">
-                    <InputCheckbox class="form-check-input" @bind-Value="adicional.Ativo" />
-                    <label class="form-check-label">Adicional ativo</label>
-                </div>
-
-                <div class="form-check mb-3">
-                    <InputCheckbox class="form-check-input" @bind-Value="adicional.Disponivel" />
-                    <label class="form-check-label">Disponível para venda</label>
-                </div>
-
-                <button type="submit" class="btn btn-primary" disabled="@salvando">
-                    @(salvando ? "Salvando..." : "Salvar")
+                <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="CancelarEdicao" disabled="@salvando">
+                    &times;
                 </button>
+            </div>
 
-                <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
-                    Cancelar
-                </button>
-            </EditForm>
+            <div class="modal-produto-corpo">
+                <EditForm Model="adicional" OnValidSubmit="SalvarAsync">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label">Nome</label>
+                        <InputText class="form-control" @bind-Value="adicional.Nome" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Preço (R$)</label>
+                        <InputNumber class="form-control" @bind-Value="adicional.Preco" step="0.01" min="0" />
+                    </div>
+
+                    <div class="form-check mb-2">
+                        <InputCheckbox class="form-check-input" @bind-Value="adicional.Ativo" />
+                        <label class="form-check-label">
+                            Adicional ativo
+                        </label>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <InputCheckbox class="form-check-input" @bind-Value="adicional.Disponivel" />
+                        <label class="form-check-label">
+                            Disponível para venda
+                        </label>
+                    </div>
+
+                    <div class="modal-produto-rodape">
+                        <button type="submit" class="btn btn-primary" disabled="@salvando">
+                            @(salvando ? "Salvando..." : "Salvar")
+                        </button>
+
+                        <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
+                            Cancelar
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
         </div>
     </div>
 }

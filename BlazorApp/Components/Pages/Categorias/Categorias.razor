@@ -28,39 +28,51 @@ else
 {
     @if (editando)
     {
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">
-                    @(categoria.Id == 0 ? "Nova categoria" : "Editar categoria")
-                </h5>
+        <div class="modal-produto-fundo">
+            <div class="modal-produto-conteudo">
+                <div class="modal-produto-cabecalho">
+                    <h5 class="mb-0">
+                        @(categoria.Id == 0 ? "Nova categoria" : "Editar categoria")
+                    </h5>
 
-                <EditForm Model="categoria" OnValidSubmit="SalvarAsync">
-                    <DataAnnotationsValidator />
-
-                    <div class="mb-3">
-                        <label class="form-label">Nome</label>
-                        <InputText class="form-control" @bind-Value="categoria.Nome" />
-                        <ValidationMessage For="@(() => categoria.Nome)" />
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Ordem de exibição</label>
-                        <InputNumber class="form-control" @bind-Value="categoria.OrdemExibicao" />
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <InputCheckbox class="form-check-input" @bind-Value="categoria.Ativo" />
-                        <label class="form-check-label">Categoria ativa</label>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" disabled="@salvando">
-                        @(salvando ? "Salvando..." : "Salvar")
+                    <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="CancelarEdicao" disabled="@salvando">
+                        &times;
                     </button>
+                </div>
 
-                    <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
-                        Cancelar
-                    </button>
-                </EditForm>
+                <div class="modal-produto-corpo">
+                    <EditForm Model="categoria" OnValidSubmit="SalvarAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label">Nome</label>
+                            <InputText class="form-control" @bind-Value="categoria.Nome" />
+                            <ValidationMessage For="@(() => categoria.Nome)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Ordem de exibição</label>
+                            <InputNumber class="form-control" @bind-Value="categoria.OrdemExibicao" />
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <InputCheckbox class="form-check-input" @bind-Value="categoria.Ativo" />
+                            <label class="form-check-label">
+                                Categoria ativa
+                            </label>
+                        </div>
+
+                        <div class="modal-produto-rodape">
+                            <button type="submit" class="btn btn-primary" disabled="@salvando">
+                                @(salvando ? "Salvando..." : "Salvar")
+                            </button>
+
+                            <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
+                                Cancelar
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
             </div>
         </div>
     }

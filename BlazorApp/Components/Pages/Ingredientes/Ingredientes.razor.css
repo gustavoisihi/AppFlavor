@@ -1,2 +1,118 @@
-﻿body {
+﻿
+.modal-produto-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgb(0 0 0 / 65%);
+}
+
+.modal-produto-conteudo {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 600px;
+    max-height: 85vh;
+    overflow: hidden;
+    color: var(--tm-ink, #f5f1ea);
+    background: var(--tm-surface, #242424);
+    border: 1px solid var(--tm-line, #49443e);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgb(0 0 0 / 40%);
+}
+
+.modal-produto-cabecalho {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--tm-line-soft, #383838);
+}
+
+    .modal-produto-cabecalho h5 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    .modal-produto-cabecalho p {
+        margin: 6px 0 0;
+        color: var(--tm-ink-muted, #aaa39a);
+        font-size: .9rem;
+    }
+
+.btn-fechar-modal {
+    flex-shrink: 0;
+    padding: 0 4px;
+    color: var(--tm-ink-muted, #aaa39a);
+    background: transparent;
+    border: 0;
+    font-size: 1.8rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+    .btn-fechar-modal:hover {
+        color: var(--tm-ink, #f5f1ea);
+    }
+
+.modal-produto-corpo {
+    padding: 12px 24px;
+    overflow-y: auto;
+}
+
+.item-configuracao {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--tm-line-soft, #383838);
+}
+
+    .item-configuracao:last-child {
+        border-bottom: 0;
+    }
+
+    .item-configuracao .form-check-label {
+        cursor: pointer;
+    }
+
+.preco-adicional {
+    display: block;
+    margin-top: 3px;
+    color: var(--tm-ink-muted, #aaa39a);
+    font-size: .9rem;
+}
+
+.modal-produto-rodape {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 18px 24px;
+    border-top: 1px solid var(--tm-line-soft, #383838);
+}
+
+@media (max-width: 600px) {
+    .modal-produto-fundo {
+        padding: 12px;
+    }
+
+    .modal-produto-conteudo {
+        max-height: 90vh;
+        border-radius: 12px;
+    }
+
+    .modal-produto-cabecalho {
+        padding: 18px 16px;
+    }
+
+    .modal-produto-corpo {
+        padding: 10px 16px;
+    }
+
+    .modal-produto-rodape {
+        padding: 14px 16px;
+    }
 }

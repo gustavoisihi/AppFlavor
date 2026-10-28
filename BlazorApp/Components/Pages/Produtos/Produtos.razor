@@ -22,16 +22,27 @@
     <div class="alert alert-danger">@erro</div>
 }
 
+
 @if (editando)
 {
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">
-                @(produto.Id == 0 ? "Novo produto" : "Editar produto")
-            </h5>
+    <div class="modal-produto-fundo">
+        <div class="modal-produto-conteudo">
+            <div class="modal-produto-cabecalho">
+                <h5 class="mb-0">
+                    @(produto.Id == 0 ? "Novo produto" : "Editar produto")
+                </h5>
 
-            <EditForm Model="produto" OnValidSubmit="SalvarAsync">
-                <DataAnnotationsValidator />
+                <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="CancelarEdicao" disabled="@salvando">
+                    &times;
+                </button>
+            </div>
+
+            <div class="modal-produto-corpo">
+                <EditForm Model="produto" OnValidSubmit="SalvarAsync">
+                    <DataAnnotationsValidator />
+
+
+            
 
                 <div class="mb-3">
                     <label class="form-label">Nome</label>
@@ -110,17 +121,19 @@
                 }
 
 
-                <button type="submit" class="btn btn-primary" disabled="@salvando"> 
-                    @(salvando ? "Salvando..." : "Salvar")
-                </button>
+               
+                    <button type="submit" class="btn btn-primary" disabled="@salvando"> @(salvando ? "Salvando..." : "Salvar")
+                    </button>
 
-                <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
-                    Cancelar
-                </button>
-            </EditForm>
+                    <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
+                        Cancelar
+                    </button>
+                </EditForm>
+            </div>
         </div>
     </div>
 }
+
 
 
 

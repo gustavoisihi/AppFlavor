@@ -23,42 +23,52 @@
 
 @if (editando)
 {
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">
-                @(ingrediente.Id == 0 ? "Novo ingrediente" : "Editar ingrediente")
-            </h5>
+    <div class="modal-produto-fundo">
+        <div class="modal-produto-conteudo">
+            <div class="modal-produto-cabecalho">
+                <h5 class="mb-0">
+                    @(ingrediente.Id == 0 ? "Novo ingrediente" : "Editar ingrediente")
+                </h5>
 
-            <EditForm Model="ingrediente" OnValidSubmit="SalvarAsync">
-                <DataAnnotationsValidator />
-
-                <div class="mb-3">
-                    <label class="form-label">Nome</label>
-                    <InputText class="form-control" @bind-Value="ingrediente.Nome" />
-                </div>
-
-                <div class="form-check mb-2">
-                    <InputCheckbox class="form-check-input" @bind-Value="ingrediente.Ativo" />
-                    <label class="form-check-label">
-                        Ingrediente ativo
-                    </label>
-                </div>
-
-                <div class="form-check mb-3">
-                    <InputCheckbox class="form-check-input" @bind-Value="ingrediente.Disponivel" />
-                    <label class="form-check-label">
-                        Disponível para uso
-                    </label>
-                </div>
-
-                <button type="submit" class="btn btn-primary" disabled="@salvando">
-                    @(salvando ? "Salvando..." : "Salvar")
+                <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="CancelarEdicao" disabled="@salvando">
+                    &times;
                 </button>
+            </div>
 
-                <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
-                    Cancelar
-                </button>
-            </EditForm>
+            <div class="modal-produto-corpo">
+                <EditForm Model="ingrediente" OnValidSubmit="SalvarAsync">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label">Nome</label>
+                        <InputText class="form-control" @bind-Value="ingrediente.Nome" />
+                    </div>
+
+                    <div class="form-check mb-2">
+                        <InputCheckbox class="form-check-input" @bind-Value="ingrediente.Ativo" />
+                        <label class="form-check-label">
+                            Ingrediente ativo
+                        </label>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <InputCheckbox class="form-check-input" @bind-Value="ingrediente.Disponivel" />
+                        <label class="form-check-label">
+                            Disponível para uso
+                        </label>
+                    </div>
+
+                    <div class="modal-produto-rodape">
+                        <button type="submit" class="btn btn-primary" disabled="@salvando">
+                            @(salvando ? "Salvando..." : "Salvar")
+                        </button>
+
+                        <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
+                            Cancelar
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
         </div>
     </div>
 }
