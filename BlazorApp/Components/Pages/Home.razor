@@ -1,0 +1,226 @@
+﻿@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@page "/"
+@rendermode InteractiveServer
+
+@using BlazorApp.Models.Dtos
+@using BlazorApp.Services
+
+@inject IPedidoService PedidoService
+
+<PageTitle>Painel inicial</PageTitle>
+
+<div class="content">
+    <div class="mb-4">
+        <h1 class="fw-bold">Resumo dos pedidos</h1>
+        <p class="text-muted">
+            Consulte os pedidos e os produtos mais pedidos por período.
+        </p>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <label class="form-label" for="periodo">
+                Período
+            </label>
+
+            <select id="periodo" class="form-select" @bind="periodoSelecionado" @bind:after="AplicarFiltroAsync">
+                <option value="hoje">Hoje</option>
+                <option value="ontem">Ontem</option>
+                <option value="ultimos7">Últimos 7 dias</option>
+                <option value="mes">Mês atual</option>
+                <option value="personalizado">Personalizado</option>
+            </select>
+
+            @if (periodoSelecionado == "personalizado")
+            {
+                <div class="row g-3 mt-2">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="dataInicio">
+                            Data inicial
+                        </label>
+                        <input id="dataInicio" type="date" class="form-control" @bind="dataInicio" @bind:after="AplicarFiltroAsync" />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label" for="dataFim">
+                            Data final
+                        </label>
+                        <input id="dataFim" type="date" class="form-control" @bind="dataFim" @bind:after="AplicarFiltroAsync" />
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (carregando)
+    {
+        <p>Carregando resumo...</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(erro))
+    {
+        <div class="alert alert-danger">@erro</div>
+    }
+    else if (resumo is not null)
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Pedidos</p>
+                        <h2>@resumo.QuantidadePedidos</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Itens pedidos</p>
+                        <h2>@resumo.QuantidadeItens</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Valor dos pedidos</p>
+                        <h2>@resumo.ValorTotalPedidos.ToString("C")</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4 class="mb-3">Produtos mais pedidos</h4>
+
+                @if (resumo.Produtos.Count == 0)
+                {
+                    <p class="text-muted mb-0">
+                        Nenhum pedido encontrado nesse período.
+                    </p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Quantidade</th>
+                                    <th>Valor total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var produto in resumo.Produtos)
+                                {
+                                    <tr>
+                                        <td>@produto.NomeProduto</td>
+                                        <td>@produto.Quantidade</td>
+                                        <td>@produto.ValorTotal.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <p class="text-muted small mt-3">
+            Considera pedidos não cancelados, inclusive os pendentes de pagamento.
+        </p>
+    }
+</div>
+
+@code {
+    private ResumoVendasDto? resumo;
+    private bool carregando = true;
+    private string? erro;
+
+    private string periodoSelecionado = "hoje";
+    private DateTime dataInicio = DateTime.Today;
+    private DateTime dataFim = DateTime.Today;
+
+    private async Task AplicarFiltroAsync()
+    {
+        carregando = true;
+        erro = null;
+
+        try
+        {
+            var fusoBrasilia = TimeZoneInfo.FindSystemTimeZoneById(
+                "E. South America Standard Time");
+
+            var hoje = TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.UtcNow, fusoBrasilia).Date;
+
+            DateTime inicioLocal;
+            DateTime fimLocal;
+
+            switch (periodoSelecionado)
+            {
+                case "ontem":
+                    inicioLocal = hoje.AddDays(-1);
+                    fimLocal = hoje;
+                    break;
+
+                case "ultimos7":
+                    inicioLocal = hoje.AddDays(-6);
+                    fimLocal = hoje.AddDays(1);
+                    break;
+
+                case "mes":
+                    inicioLocal = new DateTime(
+                        hoje.Year, hoje.Month, 1);
+                    fimLocal = inicioLocal.AddMonths(1);
+                    break;
+
+                case "personalizado":
+                    if (dataFim.Date < dataInicio.Date)
+                    {
+                        erro = "A data final não pode ser anterior à inicial.";
+                        return;
+                    }
+
+                    inicioLocal = dataInicio.Date;
+                    fimLocal = dataFim.Date.AddDays(1);
+                    break;
+
+                default:
+                    inicioLocal = hoje;
+                    fimLocal = hoje.AddDays(1);
+                    break;
+            }
+
+            inicioLocal = DateTime.SpecifyKind(
+                inicioLocal, DateTimeKind.Unspecified);
+
+            fimLocal = DateTime.SpecifyKind(
+                fimLocal, DateTimeKind.Unspecified);
+
+            var inicioUtc = TimeZoneInfo.ConvertTimeToUtc(
+                inicioLocal, fusoBrasilia);
+
+            var fimUtc = TimeZoneInfo.ConvertTimeToUtc(
+                fimLocal, fusoBrasilia);
+
+            resumo = await PedidoService.ObterResumoVendasAsync(
+                inicioUtc, fimUtc);
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível carregar o resumo dos pedidos.";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AplicarFiltroAsync();
+    }
+}

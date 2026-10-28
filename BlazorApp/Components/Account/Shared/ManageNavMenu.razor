@@ -1,0 +1,13 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using BlazorApp.Data
+
+@inject SignInManager<ApplicationUser> SignInManager
+
+@code {
+    private bool hasExternalLogins;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hasExternalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).Any();
+    }
+}

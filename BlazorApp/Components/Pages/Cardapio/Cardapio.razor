@@ -1,0 +1,533 @@
+﻿@page "/cardapio"
+@rendermode InteractiveServer
+@using BlazorApp.Models.Dtos
+@using BlazorApp.Models.Requests
+@using BlazorApp.Services
+@inject IJSRuntime JS
+@inject IProdutoService ProdutoService
+@inject IPedidoService PedidoService
+@layout BlazorApp.Components.Layout.CardapioLayout
+
+<PageTitle>Cardápio</PageTitle>
+
+<div class="content">
+    <h1 class="mb-2">Nosso cardápio</h1>
+    <p class="text-muted mb-4">
+        Escolha seu pedido e personalize como preferir.
+    </p>
+
+    @if (carregando)
+    {
+        <p>Carregando cardápio...</p>
+    }
+    else if (erro is not null)
+    {
+        <div class="alert alert-danger">@erro</div>
+    }
+    else if (produtos.Count == 0)
+    {
+        <div class="alert alert-info">
+            Nenhum produto disponível no momento.
+        </div>
+    }
+
+    else
+    {
+        <div class="cardapio-catalogo">
+            <aside class="menu-categorias">
+                <h2>Categorias</h2>
+
+                <button type="button" class="categoria-link @(categoriaSelecionada is null ? "selecionada" : "")" @onclick="() => SelecionarCategoria(null)">
+                    Todas
+                </button>
+
+                @foreach (var categoria in Categorias)
+                {
+                    <button type="button" class="categoria-link @(categoriaSelecionada == categoria ? "selecionada" : "")" @onclick="() => SelecionarCategoria(categoria)" @key="categoria">
+                        @categoria
+                    </button>
+                }
+            </aside>
+
+            <div class="lista-produtos">
+                @foreach (var grupo in ProdutosExibidos.GroupBy(p => p.NomeCategoria))
+                {
+                    <section class="grupo-produtos" @key="grupo.Key">
+                        <h2 class="titulo-categoria">@grupo.Key</h2>
+
+                        <div class="produtos-lista">
+                            @foreach (var produto in grupo)
+                            {
+                                <article class="produto-horizontal" @key="produto.Id">
+                                    @if (!string.IsNullOrWhiteSpace(produto.ImagemUrl))
+                                    {
+                                        <div class="produto-imagem-container">
+                                            <img src="@produto.ImagemUrl" class="produto-imagem" alt="@produto.Nome" />
+                                        </div>
+                                    }
+
+                                    <div class="produto-informacoes">
+                                        <h3>@produto.Nome</h3>
+
+                                        @if (!string.IsNullOrWhiteSpace(produto.Descricao))
+                                        {
+                                            <p class="produto-descricao">
+                                                @produto.Descricao
+                                            </p>
+                                        }
+
+                                        <div class="produto-rodape">
+                                            <strong class="produto-preco">
+                                                @produto.Preco.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                                            </strong>
+
+                                            <button type="button" class="btn btn-primary" @onclick="() => SelecionarProduto(produto)">
+                                                Selecionar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    </section>
+                }
+            </div>
+        </div>
+    }
+    
+    @if (produtoSelecionado is not null)
+    {
+        <div class="modal-personalizacao-fundo" @onclick="CancelarPersonalizacao">
+
+            <div class="modal-personalizacao" role="dialog" aria-modal="true" aria-labelledby="titulo-personalizacao" @onclick:stopPropagation="true">
+
+                 
+                @if (!string.IsNullOrWhiteSpace(produtoSelecionado.ImagemUrl))
+                {
+                    <div class="modal-produto-imagem">
+                        <img src="@produtoSelecionado.ImagemUrl"
+                             alt="@produtoSelecionado.Nome" />
+                    </div>
+                }
+
+
+                <div class="modal-personalizacao-cabecalho">
+                    <div>
+                        <h2 id="titulo-personalizacao">
+                            @produtoSelecionado.Nome
+                        </h2>
+                        <p>
+                            Personalize seu pedido como preferir.
+                        </p>
+                    </div>
+
+                    <button type="button" class="modal-fechar" aria-label="Fechar personalização" @onclick="CancelarPersonalizacao">
+                        ×
+                    </button>
+                </div>
+
+                <div class="modal-personalizacao-conteudo">
+                    @if (produtoSelecionado.Ingredientes.Any())
+                    {
+                        <h3>Ingredientes</h3>
+
+                        @foreach (var ingrediente in produtoSelecionado.Ingredientes)
+                        {
+                            <div class="form-check mb-2">
+                                <input class="form-check-input"type="checkbox"id="@($"ing-{ingrediente.Id}")" checked="@(!ingredientesRemovidos.Contains(ingrediente.Id)&& ingrediente.InclusoPorPadrao)" 
+                                disabled="@(!ingrediente.PermiteRemover || !ingrediente.InclusoPorPadrao)" @onchange="(e) => AlternarIngrediente(ingrediente.Id, e.Value)" />
+
+                                <label class="form-check-label" for="@($"ing-{ingrediente.Id}")">
+                                    @ingrediente.Nome
+
+                                    @if (!ingrediente.PermiteRemover)
+                                    {
+                                        <span class="text-muted">
+                                            (não pode remover)
+                                        </span>
+                                    }
+                                </label>
+                            </div>
+                        }
+                    }
+
+                    @if (produtoSelecionado.Adicionais.Any())
+                    {
+                        <h3 class="mt-4">Adicionais</h3>
+
+                        @foreach (var adicional in produtoSelecionado.Adicionais)
+                        {
+                            <div class="linha-adicional">
+                                <div>
+                                    <span>@adicional.Nome</span>
+                                    <span class="text-muted">
+                                        (+@adicional.Preco.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")))
+                                    </span>
+                                </div>
+
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            disabled="@(!adicionaisSelecionados.ContainsKey(adicional.Id)|| adicionaisSelecionados[adicional.Id] <= 0)"@onclick="() => AlterarQuantidadeAdicional(adicional.Id, -1)">
+                                            −
+                                    </button>
+
+                                    <span>
+                                        @(adicionaisSelecionados.GetValueOrDefault(adicional.Id))
+                                    </span>
+
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => AlterarQuantidadeAdicional(adicional.Id, 1)">
+                                            +
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    <div class="mt-4">
+                        <label class="form-label">Quantidade</label>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-outline-secondary" disabled="@(quantidade <= 1)" @onclick="() => quantidade--">
+                                −
+                            </button>
+
+                            <span>@quantidade</span>
+
+                            <button type="button" class="btn btn-outline-secondary" @onclick="() => quantidade++">
+                                +
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-personalizacao-rodape">
+                    <div class="modal-total">
+                        <span>Total</span>
+                        <strong>
+                            @CalcularTotalPersonalizacao().ToString("C2",System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                        </strong>
+                    </div>
+
+                    <div class="modal-acoes">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CancelarPersonalizacao">
+                            Cancelar
+                        </button>
+
+                        <button type="button" class="btn btn-primary" @onclick="AdicionarAoPedido">
+                            Adicionar ao pedido
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    
+    @if (carrinho.Count > 0)
+    {
+        <div class="card mt-4 mb-5" @ref="referenciaCarrinho">
+            <div class="card-body">
+                <h2 class="h4">Seu pedido</h2>
+
+                @foreach (var item in carrinho)
+                {
+                    <div class="border-bottom py-3" @key="item.Chave">
+                        <div class="d-flex justify-content-between gap-3">
+                            <div>
+                                <strong>@item.Quantidade × @item.NomeProduto</strong>
+
+                                @if (item.IngredientesRemovidos.Count > 0)
+                                {
+                                    <div class="text-muted small">
+                                        Sem: @string.Join(", ", item.IngredientesRemovidos)
+                                    </div>
+                                }
+
+                                @foreach (var adicional in item.Adicionais)
+                                {
+                                    <div class="text-muted small">
+                                        + @adicional.Quantidade × @adicional.Nome
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="text-end">
+                                <strong>
+                                    @item.Total.ToString("C2",System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                                </strong>
+
+                                <div>
+                                    <button class="btn btn-sm btn-outline-danger mt-1" @onclick="() => RemoverDoCarrinho(item.Chave)">
+                                        Remover
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex justify-content-between mt-3">
+                    <strong>Total do pedido</strong>
+                    <strong>
+                        @carrinho.Sum(i => i.Total).ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                    </strong>
+                </div>
+
+                <button class="btn btn-primary w-100 mt-3" disabled="@(enviandoPedido || carrinho.Count == 0)" @onclick="ConfirmarPedidoAsync">
+                    @(enviandoPedido ? "Enviando pedido..." : "Confirmar pedido")
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (mensagemSucesso is not null)
+    {
+        <div class="alert alert-success mt-3">
+            @mensagemSucesso
+        </div>
+    }
+
+    @if (erro is not null)
+    {
+        <div class="alert alert-danger mt-3">
+            @erro
+        </div>
+    }
+
+    
+    @if (carrinho.Count > 0)
+    {
+        <div class="barra-carrinho-fixa">
+            <div class="barra-carrinho-info">
+                <div class="barra-carrinho-icone">
+                    <span class="bi bi-bag-fill" aria-hidden="true"></span>
+                </div>
+
+                <div>
+                    <strong>Seu pedido</strong>
+                    <div class="barra-carrinho-quantidade">
+                        @carrinho.Sum(i => i.Quantidade)
+                        @(carrinho.Sum(i => i.Quantidade) == 1 ? "item" : "itens")
+                    </div>
+                </div>
+            </div>
+
+            <div class="barra-carrinho-total">
+                <strong>
+                    @carrinho.Sum(i => i.Total).ToString( "C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                </strong>
+
+                <button type="button" class="btn btn-primary" @onclick="IrParaCarrinho">
+                    Ver pedido
+                </button>
+            </div>
+        </div>
+    }
+
+</div>
+
+@code {
+    private List<ProdutoCardapioDto> produtos = new();
+    private bool carregando = true;
+    private string? erro;
+
+    private ProdutoCardapioDto? produtoSelecionado;
+    private HashSet<int> ingredientesRemovidos = new();
+    private Dictionary<int, int> adicionaisSelecionados = new();
+    private int quantidade = 1;
+
+    private List<ItemCarrinhoDto> carrinho = new();
+
+    private bool enviandoPedido;
+    private string? mensagemSucesso;
+    private long? pedidoConfirmadoId;
+
+    private string? categoriaSelecionada;
+
+    private List<string> Categorias =>produtos.Select(p => p.NomeCategoria).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
+
+    private IEnumerable<ProdutoCardapioDto> ProdutosExibidos =>categoriaSelecionada is null? produtos: produtos.Where(p => p.NomeCategoria == categoriaSelecionada);
+
+    private ElementReference referenciaCarrinho;
+
+    private async Task IrParaCarrinho()
+    {
+        await JS.InvokeVoidAsync(
+            "scrollToElement",
+            referenciaCarrinho);
+    }
+
+    private void SelecionarCategoria(string? categoria)
+    {
+        categoriaSelecionada = categoria;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            produtos = await ProdutoService.ListarCardapioAsync();
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível carregar o cardápio.";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private void SelecionarProduto(ProdutoCardapioDto produto)
+    {
+        produtoSelecionado = produto;
+        ingredientesRemovidos = new HashSet<int>();
+        adicionaisSelecionados = new Dictionary<int, int>();
+        quantidade = 1;
+    }
+
+    private void AlternarIngrediente(int ingredienteId, object? valor)
+    {
+        if (valor is not bool marcado)
+            return;
+
+        var ingrediente = produtoSelecionado?.Ingredientes
+            .FirstOrDefault(i => i.Id == ingredienteId);
+
+        if (ingrediente is null ||
+            !ingrediente.InclusoPorPadrao ||
+            !ingrediente.PermiteRemover)
+            return;
+
+        if (marcado)
+            ingredientesRemovidos.Remove(ingredienteId);
+        else
+            ingredientesRemovidos.Add(ingredienteId);
+    }
+
+    private void AlterarQuantidadeAdicional(int adicionalId, int alteracao)
+    {
+        var atual = adicionaisSelecionados.GetValueOrDefault(adicionalId);
+        var novaQuantidade = atual + alteracao;
+
+        if (novaQuantidade <= 0)
+            adicionaisSelecionados.Remove(adicionalId);
+        else
+            adicionaisSelecionados[adicionalId] = novaQuantidade;
+    }
+
+    private decimal CalcularTotalPersonalizacao()
+    {
+        if (produtoSelecionado is null)
+            return 0;
+
+        var totalAdicionais = produtoSelecionado.Adicionais
+            .Sum(a => a.Preco *
+                adicionaisSelecionados.GetValueOrDefault(a.Id));
+
+        return (produtoSelecionado.Preco + totalAdicionais) * quantidade;
+    }
+
+    private void CancelarPersonalizacao()
+    {
+        produtoSelecionado = null;
+        ingredientesRemovidos.Clear();
+        adicionaisSelecionados.Clear();
+        quantidade = 1;
+    }
+
+    private void AdicionarAoPedido()
+    {
+        if (produtoSelecionado is null || quantidade < 1)
+            return;
+
+        var item = new ItemCarrinhoDto
+        {
+            ProdutoId = produtoSelecionado.Id,
+            NomeProduto = produtoSelecionado.Nome,
+            PrecoUnitario = produtoSelecionado.Preco,
+            Quantidade = quantidade,
+
+            IngredientesRemovidosIds = produtoSelecionado.Ingredientes
+                .Where(i => ingredientesRemovidos.Contains(i.Id))
+                .Select(i => i.Id)
+                .ToList(),
+
+            IngredientesRemovidos = produtoSelecionado.Ingredientes
+                .Where(i => ingredientesRemovidos.Contains(i.Id))
+                .Select(i => i.Nome)
+                .ToList(),
+
+            Adicionais = produtoSelecionado.Adicionais
+                .Where(a => adicionaisSelecionados.GetValueOrDefault(a.Id) > 0)
+                .Select(a => new AdicionalCarrinhoDto
+                {
+                    AdicionalId = a.Id,
+                    Nome = a.Nome,
+                    Preco = a.Preco,
+                    Quantidade = adicionaisSelecionados[a.Id]
+                })
+                .ToList()
+        };
+
+        carrinho.Add(item);
+
+        CancelarPersonalizacao();
+    }
+
+    private void RemoverDoCarrinho(Guid chave)
+    {
+        carrinho.RemoveAll(i => i.Chave == chave);
+    }
+
+    private async Task ConfirmarPedidoAsync()
+    {
+        if (carrinho.Count == 0 || enviandoPedido)
+            return;
+
+        enviandoPedido = true;
+        mensagemSucesso = null;
+        erro = null;
+        pedidoConfirmadoId = null;
+
+        try
+        {
+            var request = new CriarPedidoRequest
+            {
+                Itens = carrinho.Select(item => new CriarPedidoItemRequest
+                {
+                    ProdutoId = item.ProdutoId,
+                    Quantidade = item.Quantidade,
+
+                    IngredientesRemovidosIds = item.IngredientesRemovidosIds,
+
+                    Adicionais = item.Adicionais.Select(adicional =>
+                        new AdicionalPedidoRequest
+                        {
+                            AdicionalId = adicional.AdicionalId,
+                            Quantidade = adicional.Quantidade
+                        }).ToList()
+                }).ToList()
+            };
+
+            var id = await PedidoService.CriarPedidoAsync(request);
+
+            pedidoConfirmadoId = id;
+            mensagemSucesso = $"Pedido #{id} enviado para a cozinha.";
+            carrinho.Clear();
+            CancelarPersonalizacao();
+        }
+        catch (InvalidOperationException ex)
+        {
+            erro = ex.Message;
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível confirmar o pedido. Tente novamente.";
+        }
+        finally
+        {
+            enviandoPedido = false;
+        }
+    }
+}

@@ -1,0 +1,221 @@
+﻿@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@page "/cozinha"
+@rendermode InteractiveServer
+@using BlazorApp.Models.Dtos
+@using BlazorApp.Models.Enums
+@using BlazorApp.Services
+@inject IPedidoService PedidoService
+@implements IDisposable
+
+<PageTitle>Cozinha</PageTitle>
+
+<div class="content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Pedidos da cozinha</h1>
+            <p class="text-muted mb-0">
+                Pedidos confirmados, aguardando preparo ou em andamento.
+            </p>
+        </div>
+
+        <button class="btn btn-outline-secondary" @onclick="CarregarPedidosAsync" disabled="@carregando">
+            Atualizar
+        </button>
+    </div>
+
+    @if (erro is not null)
+    {
+        <div class="alert alert-danger">@erro</div>
+    }
+
+    @if (carregando && pedidos.Count == 0)
+    {
+        <p>Carregando pedidos...</p>
+    }
+    else if (pedidos.Count == 0)
+    {
+        <div class="alert alert-info">
+            Não há pedidos aguardando preparo.
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var pedido in pedidos)
+            {
+                <div class="col-12 col-lg-6" @key="pedido.Id">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between gap-2 mb-3">
+                                <h2 class="h4">Pedido #@pedido.Id</h2>
+
+                                <span class="badge bg-secondary align-self-start">
+                                    @pedido.StatusPreparo
+                                </span>
+                            </div>
+
+                            <p class="text-muted">
+                                Recebido: @pedido.CriadoEm.ToLocalTime().ToString("HH:mm")
+                            </p>
+
+                            @foreach (var item in pedido.Itens)
+                            {
+                                <div class="border-top py-3">
+                                    <h3 class="h6">
+                                        @item.Quantidade × @item.NomeProduto
+                                    </h3>
+
+                                    @if (item.IngredientesRemovidos.Count > 0)
+                                    {
+                                        <p class="mb-1">
+                                            <strong>Sem:</strong> @string.Join(", ", item.IngredientesRemovidos)
+                                        </p>
+                                    }
+
+                                    @if (item.Adicionais.Count > 0)
+                                    {
+                                        <p class="mb-1">
+                                            <strong>Adicionais:</strong> @string.Join(", ", item.Adicionais)
+                                        </p>
+                                    }
+
+                                    @if (!string.IsNullOrWhiteSpace(item.Observacao))
+                                    {
+                                        <p class="mb-1">
+                                            <strong>Observação:</strong> @item.Observacao
+                                        </p>
+                                    }
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(pedido.Observacao))
+                            {
+                                <div class="alert alert-light border">
+                                    <strong>Observação do pedido:</strong> @pedido.Observacao
+                                </div>
+                            }
+
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                @if (pedido.StatusPreparo == nameof(StatusPreparo.Novo))
+                                {
+                                    <button class="btn btn-primary" disabled="@atualizando" @onclick="() => AlterarStatusAsync( pedido.Id, StatusPreparo.EmPreparo)">
+                                            Iniciar preparo
+                                    </button>
+                                }
+                                else if (pedido.StatusPreparo == nameof(StatusPreparo.EmPreparo))
+                                {
+                                    <button class="btn btn-success" disabled="@atualizando" @onclick="() => AlterarStatusAsync(pedido.Id, StatusPreparo.Pronto)">
+                                            Marcar como pronto
+                                    </button>
+                                }
+                                else if (pedido.StatusPreparo == nameof(StatusPreparo.Pronto))
+                                {
+                                    <button class="btn btn-outline-success" disabled="@atualizando" @onclick="() => AlterarStatusAsync(pedido.Id, StatusPreparo.Entregue)">
+                                            Marcar como entregue
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<PedidoCozinhaDto> pedidos = new();
+    private bool carregando = true;
+    private bool atualizando;
+    private string? erro;
+    private PeriodicTimer? timer;
+    private CancellationTokenSource? cancelamento;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarPedidosAsync();
+
+        cancelamento = new CancellationTokenSource();
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+
+        _ = AtualizarPeriodicamenteAsync(cancelamento.Token);
+    }
+
+    private async Task CarregarPedidosAsync()
+    {
+        carregando = true;
+        erro = null;
+
+        try
+        {
+            pedidos = await PedidoService.ListarPedidosCozinhaAsync();
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível carregar os pedidos.";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task AlterarStatusAsync(
+        long pedidoId,
+        StatusPreparo novoStatus)
+    {
+        if (atualizando)
+            return;
+
+        atualizando = true;
+        erro = null;
+
+        try
+        {
+            await PedidoService.AtualizarStatusPreparoAsync(
+                pedidoId, novoStatus);
+
+            await CarregarPedidosAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            erro = ex.Message;
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível atualizar o status do pedido.";
+        }
+        finally
+        {
+            atualizando = false;
+        }
+    }
+
+    private async Task AtualizarPeriodicamenteAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (timer is not null &&
+                   await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(CarregarPedidosAsync);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // A página foi encerrada.
+        }
+        catch (ObjectDisposedException)
+        {
+            // O temporizador foi descartado.
+        }
+    }
+
+    public void Dispose()
+    {
+        cancelamento?.Cancel();
+        timer?.Dispose();
+        cancelamento?.Dispose();
+    }
+}

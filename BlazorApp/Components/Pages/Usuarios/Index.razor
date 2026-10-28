@@ -1,0 +1,292 @@
+﻿@page "/usuarios"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using BlazorApp.Components.Shared
+@using BlazorApp.Models.Dtos
+@using BlazorApp.Models.Requests
+@using BlazorApp.Services
+@inject IUsuarioService UsuarioService
+@inject AuthenticationStateProvider AuthStateProvider
+@rendermode InteractiveServer
+
+<PageTitle>Usuários</PageTitle>
+
+<h1>Usuários</h1>
+
+<div class="d-flex justify-content-between mb-3">
+    <input class="form-control w-50" placeholder="Buscar por nome ou e-mail"
+           @bind="busca" @bind:event="oninput" @onkeyup="Buscar" />
+    <button class="btn btn-primary" @onclick="AbrirNovo">Novo usuário</button>
+</div>
+
+@if (mensagem is not null)
+{
+    <div class="alert @(mensagemSucesso ? "alert-success" : "alert-danger")">@mensagem</div>
+}
+
+@if (usuarios is null)
+{
+    <p>Carregando...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in usuarios)
+            {
+                <tr>
+                    <td>@u.Nome</td>
+                    <td>@u.Email</td>
+                    <td>@u.Role</td>
+                    <td>
+                        @if (u.Ativo)
+                        {
+                            <span class="badge bg-success">Ativo</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inativo</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => AbrirEdicao(u)">Editar</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => AbrirSenha(u)">Redefinir senha</button>
+                        @if (u.Ativo)
+                        {
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmarDesativar(u)">Desativar</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-outline-success" @onclick="() => Reativar(u)">Reativar</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@* Modal criar/editar *@
+@if (formVisivel)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(editandoId is null ? "Novo usuário" : "Editar usuário")</h5>
+                    <button type="button" class="btn-close" @onclick="FecharForm"></button>
+                </div>
+                <EditForm Model="formModel" OnValidSubmit="Salvar">
+                    <DataAnnotationsValidator />
+                    <div class="modal-body">
+                        <ValidationSummary class="text-danger" />
+                        <div class="mb-3">
+                            <label class="form-label">Nome</label>
+                            <InputText class="form-control" @bind-Value="formModel.Nome" />
+                        </div>
+                        @if (editandoId is null)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">E-mail</label>
+                                <InputText class="form-control" @bind-Value="formModel.Email" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Senha inicial</label>
+                                <InputText type="password" class="form-control" @bind-Value="formModel.Senha" />
+                            </div>
+                        }
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <InputSelect class="form-select" @bind-Value="formModel.Role">
+                                <option value="Usuario">Usuario</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Supervisor">Supervisor</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="FecharForm">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal redefinir senha *@
+@if (senhaVisivel)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Redefinir senha</h5>
+                    <button type="button" class="btn-close" @onclick="() => senhaVisivel = false"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Nova senha</label>
+                    <input type="password" class="form-control" @bind="novaSenha" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => senhaVisivel = false">Cancelar</button>
+                    <button type="button" class="btn btn-primary" @onclick="SalvarSenha">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmDialog Visivel="confirmVisivel"
+               Titulo="Desativar usuário"
+               Mensagem="@($"Deseja desativar {usuarioParaDesativar?.Nome}?")"
+               OnConfirmar="Desativar"
+               OnCancelar="() => confirmVisivel = false" />
+
+@code {
+    private List<UsuarioListItem>? usuarios;
+    private string busca = string.Empty;
+    private string? mensagem;
+    private bool mensagemSucesso;
+
+    private bool formVisivel;
+    private string? editandoId;
+    private FormModel formModel = new();
+
+    private bool senhaVisivel;
+    private string? usuarioParaSenha;
+    private string novaSenha = string.Empty;
+
+    private bool confirmVisivel;
+    private UsuarioListItem? usuarioParaDesativar;
+
+    private string usuarioLogadoId = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        usuarioLogadoId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+
+        await Carregar();
+    }
+
+    private async Task Carregar()
+    {
+        var resultado = await UsuarioService.List(busca);
+        usuarios = resultado.Dados ?? [];
+    }
+
+    private async Task Buscar() => await Carregar();
+
+    private void AbrirNovo()
+    {
+        editandoId = null;
+        formModel = new FormModel { Role = "Usuario" };
+        formVisivel = true;
+        mensagem = null;
+    }
+
+    private void AbrirEdicao(UsuarioListItem u)
+    {
+        editandoId = u.Id;
+        formModel = new FormModel { Nome = u.Nome, Role = u.Role };
+        formVisivel = true;
+        mensagem = null;
+    }
+
+    private void FecharForm() => formVisivel = false;
+
+    private async Task Salvar()
+    {
+        var resultado = editandoId is null
+            ? await UsuarioService.Create(new CriarUsuarioRequest
+            {
+                Nome = formModel.Nome,
+                Email = formModel.Email,
+                Senha = formModel.Senha,
+                Role = formModel.Role
+            })
+            : await UsuarioService.Update(editandoId, new AtualizarUsuarioRequest
+            {
+                Nome = formModel.Nome,
+                Role = formModel.Role
+            }, usuarioLogadoId);
+
+        mensagemSucesso = resultado.Sucesso;
+        mensagem = resultado.Sucesso
+            ? (editandoId is null ? "Usuário criado com sucesso." : "Usuário atualizado com sucesso.")
+            : resultado.Mensagem;
+
+        if (resultado.Sucesso)
+        {
+            formVisivel = false;
+            await Carregar();
+        }
+    }
+
+    private void AbrirSenha(UsuarioListItem u)
+    {
+        usuarioParaSenha = u.Id;
+        novaSenha = string.Empty;
+        senhaVisivel = true;
+        mensagem = null;
+    }
+
+    private async Task SalvarSenha()
+    {
+        if (usuarioParaSenha is null) return;
+
+        var resultado = await UsuarioService.RedefinirSenha(usuarioParaSenha, novaSenha);
+        mensagemSucesso = resultado.Sucesso;
+        mensagem = resultado.Sucesso ? "Senha redefinida com sucesso." : resultado.Mensagem;
+
+        if (resultado.Sucesso)
+            senhaVisivel = false;
+    }
+
+    private void ConfirmarDesativar(UsuarioListItem u)
+    {
+        usuarioParaDesativar = u;
+        confirmVisivel = true;
+    }
+
+    private async Task Desativar()
+    {
+        confirmVisivel = false;
+        if (usuarioParaDesativar is null) return;
+
+        var resultado = await UsuarioService.Desativar(usuarioParaDesativar.Id, usuarioLogadoId);
+        mensagemSucesso = resultado.Sucesso;
+        mensagem = resultado.Sucesso ? "Usuário desativado." : resultado.Mensagem;
+
+        if (resultado.Sucesso)
+            await Carregar();
+    }
+
+    private async Task Reativar(UsuarioListItem u)
+    {
+        var resultado = await UsuarioService.Reativar(u.Id);
+        mensagemSucesso = resultado.Sucesso;
+        mensagem = resultado.Sucesso ? "Usuário reativado." : resultado.Mensagem;
+
+        if (resultado.Sucesso)
+            await Carregar();
+    }
+
+    private class FormModel
+    {
+        public string Nome { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Senha { get; set; } = string.Empty;
+        public string Role { get; set; } = "Usuario";
+    }
+}

@@ -1,0 +1,572 @@
+﻿@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@page "/produtos"
+@using BlazorApp.Models.Entities
+@using BlazorApp.Services
+@using BlazorApp.Models.Dtos
+@inject IProdutoService ProdutoService
+@inject ICategoriaService CategoriaService
+@rendermode InteractiveServer
+
+<PageTitle>Produtos</PageTitle>
+
+<h3>Produtos</h3>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="NovoProduto">
+        Novo produto
+    </button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(erro))
+{
+    <div class="alert alert-danger">@erro</div>
+}
+
+@if (editando)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">
+                @(produto.Id == 0 ? "Novo produto" : "Editar produto")
+            </h5>
+
+            <EditForm Model="produto" OnValidSubmit="SalvarAsync">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label">Nome</label>
+                    <InputText class="form-control" @bind-Value="produto.Nome" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Descrição</label>
+                    <InputTextArea class="form-control" @bind-Value="produto.Descricao" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Categoria</label>
+                    <InputSelect class="form-select" @bind-Value="produto.CategoriaId">
+                        <option value="0">Selecione uma categoria</option>
+                        @foreach (var categoria in categorias)
+                        {
+                            <option value="@categoria.Id">
+                                @categoria.Nome
+                            </option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Preço (R$)</label>
+                    <InputNumber class="form-control" @bind-Value="produto.Preco" step="0.01" min="0" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">URL da imagem (opcional)</label>
+                    <InputText class="form-control" @bind-Value="produto.ImagemUrl" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Ordem de exibição</label>
+                    <InputNumber class="form-control" @bind-Value="produto.OrdemExibicao" />
+                </div>
+
+                <div class="form-check mb-2">
+                    <InputCheckbox class="form-check-input" @bind-Value="produto.Ativo" />
+                    <label class="form-check-label">Produto ativo</label>
+                </div>
+
+                <div class="form-check mb-3">
+                    <InputCheckbox class="form-check-input" @bind-Value="produto.Disponivel" />
+                    <label class="form-check-label">Disponível para venda</label>
+                </div>
+
+                
+                @if (produto.Id > 0)
+                {
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title">Personalização do produto</h6>
+                            <p class="text-muted">
+                                Configure os ingredientes e adicionais disponíveis para o cliente.
+                            </p>
+
+                            <button type="button" class="btn btn-outline-secondary me-2 mb-2" @onclick="AbrirIngredientesDoFormularioAsync">
+                                Ingredientes
+                            </button>
+
+                            <button type="button" class="btn btn-outline-secondary mb-2" @onclick="AbrirAdicionaisDoFormularioAsync">
+                                Adicionais
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        Para configurar ingredientes e adicionais, salve o produto primeiro.
+                        Depois, abra a edição para acessar essas opções.
+                    </div>
+                }
+
+
+                <button type="submit" class="btn btn-primary" disabled="@salvando"> 
+                    @(salvando ? "Salvando..." : "Salvar")
+                </button>
+
+                <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
+                    Cancelar
+                </button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+
+
+@if (produtoIngredientesId is not null)
+{
+    <div class="modal-produto-fundo"
+         @onclick="FecharIngredientes">
+
+        <div class="modal-produto-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-ingredientes" @onclick:stopPropagation="true">
+
+            <div class="modal-produto-cabecalho">
+                <div>
+                    <h5 id="titulo-modal-ingredientes">
+                        Ingredientes do produto
+                    </h5>
+                    <p>Configure os ingredientes e as opções do cliente.</p>
+                </div>
+
+                <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="FecharIngredientes" disabled="@salvandoIngredientes">
+                    &times;
+                </button>
+            </div>
+
+            <div class="modal-produto-corpo">
+                @if (ingredientesProduto.Count == 0)
+                {
+                    <div class="alert alert-info">
+                        Não há ingredientes ativos cadastrados.
+                    </div>
+                }
+                else
+                {
+                    @foreach (var ingrediente in ingredientesProduto)
+                    {
+                        <div class="item-configuracao" @key="ingrediente.IngredienteId">
+
+                            <strong>@ingrediente.Nome</strong>
+
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="@($"incluso-{ingrediente.IngredienteId}")" @bind="ingrediente.InclusoPorPadrao" />
+
+                                <label class="form-check-label" for="@($"incluso-{ingrediente.IngredienteId}")">
+                                    Incluso por padrão
+                                </label>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="@($"remover-{ingrediente.IngredienteId}")" @bind="ingrediente.PermiteRemover" />
+
+                                <label class="form-check-label" for="@($"remover-{ingrediente.IngredienteId}")">
+                                    Cliente pode remover
+                                </label>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="modal-produto-rodape">
+                <button type="button" class="btn btn-outline-secondary" @onclick="FecharIngredientes" disabled="@salvandoIngredientes">
+                    Cancelar
+                </button>
+
+                <button type="button" class="btn btn-primary"  @onclick="SalvarIngredientesAsync" disabled="@salvandoIngredientes">
+                    @(salvandoIngredientes ? "Salvando..." : "Salvar ingredientes")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+
+
+@if (produtoAdicionaisId.HasValue)
+{
+    <div class="modal-produto-fundo"
+         @onclick="FecharAdicionais">
+
+        <div class="modal-produto-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-adicionais" @onclick:stopPropagation="true">
+
+            <div class="modal-produto-cabecalho">
+                <div>
+                    <h5 id="titulo-modal-adicionais">
+                        Adicionais do produto
+                    </h5>
+                    <p>Escolha quais adicionais estarão disponíveis para o cliente.</p>
+                </div>
+
+                <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="FecharAdicionais" disabled="@salvandoAdicionais">
+                    &times;
+                </button>
+            </div>
+
+            <div class="modal-produto-corpo">
+                @if (adicionaisProduto.Count == 0)
+                {
+                    <div class="alert alert-info">
+                        Não existem adicionais ativos cadastrados.
+                        Cadastre-os na tela de Adicionais.
+                    </div>
+                }
+                else
+                {
+                    @foreach (var adicional in adicionaisProduto)
+                    {
+                        <div class="item-configuracao" @key="adicional.AdicionalId">
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="@($"adicional-{adicional.AdicionalId}")" @bind="adicional.Selecionado" />
+
+                                <label class="form-check-label" for="@($"adicional-{adicional.AdicionalId}")">
+                                    <strong>@adicional.Nome</strong>
+                                    <span class="preco-adicional">
+                                        @adicional.Preco.ToString("C2", cultura)
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="modal-produto-rodape">
+                <button type="button" class="btn btn-outline-secondary" @onclick="FecharAdicionais" disabled="@salvandoAdicionais">
+                    Cancelar
+                </button>
+
+                <button type="button" class="btn btn-primary" @onclick="SalvarAdicionaisAsync" disabled="@salvandoAdicionais">
+                    @(salvandoAdicionais ? "Salvando..." : "Salvar adicionais")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+
+
+@if (carregando)
+{
+    <p>Carregando produtos...</p>
+}
+else if (produtos.Count == 0)
+{
+    <div class="alert alert-info">
+        Nenhum produto cadastrado.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Categoria</th>
+                    <th>Preço</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in produtos)
+                {
+                    <tr @key="item.Id">
+                        <td>@item.Nome</td>
+                        <td>@item.Categoria.Nome</td>
+                        <td>@item.Preco.ToString("C2", cultura)</td>
+                        <td>
+                            @if (!item.Ativo)
+                            {
+                                <span class="badge bg-secondary">Inativo</span>
+                            }
+                            else if (!item.Disponivel)
+                            {
+                                <span class="badge bg-warning text-dark">
+                                    Indisponível
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">Disponível</span>
+                            }
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => Editar(item)">
+                                Editar
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary ms-1" @onclick="() => AbrirIngredientesAsync(item)">
+                                Ingredientes
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary ms-1" @onclick="() => AbrirAdicionaisAsync(item)">
+                                Adicionais
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<Produto> produtos = new();
+    private List<Categoria> categorias = new();
+    private Produto produto = new();
+
+    private bool carregando = true;
+    private bool editando;
+    private bool salvando;
+    private string? erro;
+
+    private readonly System.Globalization.CultureInfo cultura = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+
+    private int? produtoIngredientesId;
+    private List<IngredienteProdutoDto> ingredientesProduto = new();
+    private bool salvandoIngredientes;
+
+    private int? produtoAdicionaisId;
+    private List<AdicionalProdutoDto> adicionaisProduto = new();
+    private bool salvandoAdicionais;
+    
+    private async Task AbrirIngredientesDoFormularioAsync()
+    {
+        var item = produtos.FirstOrDefault(p => p.Id == produto.Id);
+
+        if (item is not null)
+            await AbrirIngredientesAsync(item);
+    }
+
+    private async Task AbrirAdicionaisDoFormularioAsync()
+    {
+        var item = produtos.FirstOrDefault(p => p.Id == produto.Id);
+
+        if (item is not null)
+            await AbrirAdicionaisAsync(item);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            categorias = await CategoriaService.ListarTodasAsync();
+            await CarregarProdutosAsync();
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível carregar os dados.";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task CarregarProdutosAsync()
+    {
+        produtos = await ProdutoService.ListarTodosAsync();
+    }
+
+    private void NovoProduto()
+    {
+        produto = new Produto();
+        editando = true;
+        erro = null;
+    }
+
+    private void Editar(Produto item)
+    {
+        produto = new Produto
+        {
+            Id = item.Id,
+            Nome = item.Nome,
+            Descricao = item.Descricao,
+            ImagemUrl = item.ImagemUrl,
+            CategoriaId = item.CategoriaId,
+            Preco = item.Preco,
+            Ativo = item.Ativo,
+            Disponivel = item.Disponivel,
+            OrdemExibicao = item.OrdemExibicao
+        };
+
+        editando = true;
+        erro = null;
+    }
+
+    private void CancelarEdicao()
+    {
+        editando = false;
+        produto = new Produto();
+        erro = null;
+    }
+
+    private async Task SalvarAsync()
+    {
+        erro = null;
+
+        produto.Nome = produto.Nome.Trim();
+        produto.Descricao ??= string.Empty;
+
+        if (string.IsNullOrWhiteSpace(produto.Nome))
+        {
+            erro = "Informe o nome do produto.";
+            return;
+        }
+
+        if (produto.CategoriaId <= 0 ||
+            !categorias.Any(c => c.Id == produto.CategoriaId && c.Ativo))
+        {
+            erro = "Selecione uma categoria ativa.";
+            return;
+        }
+
+        if (produto.Preco < 0)
+        {
+            erro = "O preço não pode ser negativo.";
+            return;
+        }
+
+        salvando = true;
+
+        try
+        {
+            if (produto.Id == 0)
+            {
+                await ProdutoService.CriarAsync(produto);
+            }
+            else
+            {
+                await ProdutoService.AtualizarAsync(produto);
+            }
+
+            editando = false;
+            produto = new Produto();
+
+            await CarregarProdutosAsync();
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível salvar o produto.";
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+
+    
+    private async Task AbrirIngredientesAsync(Produto item)
+    {
+        erro = null;
+
+        try
+        {
+            produtoIngredientesId = item.Id;
+
+            ingredientesProduto =
+                await ProdutoService.ListarIngredientesDoProdutoAsync(item.Id);
+        }
+        catch (Exception)
+        {
+            produtoIngredientesId = null;
+            erro = "Não foi possível carregar os ingredientes do produto.";
+        }
+    }
+
+    private void FecharIngredientes()
+    {
+        produtoIngredientesId = null;
+        ingredientesProduto = new();
+        erro = null;
+    }
+
+    private async Task SalvarIngredientesAsync()
+    {
+        if (produtoIngredientesId is null)
+            return;
+
+        salvandoIngredientes = true;
+        erro = null;
+
+        try
+        {
+            await ProdutoService.SalvarIngredientesDoProdutoAsync(
+                produtoIngredientesId.Value,
+                ingredientesProduto);
+
+            FecharIngredientes();
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível salvar os ingredientes do produto.";
+        }
+        finally
+        {
+            salvandoIngredientes = false;
+        }
+    }
+
+    private async Task AbrirAdicionaisAsync(Produto item)
+    {
+        erro = null;
+
+        try
+        {
+            produtoAdicionaisId = item.Id;
+
+            adicionaisProduto =
+                await ProdutoService.ListarAdicionaisDoProdutoAsync(item.Id);
+        }
+        catch (Exception)
+        {
+            produtoAdicionaisId = null;
+            erro = "Não foi possível carregar os adicionais do produto.";
+        }
+    }
+
+    private void FecharAdicionais()
+    {
+        produtoAdicionaisId = null;
+        adicionaisProduto = new();
+        erro = null;
+    }
+
+    private async Task SalvarAdicionaisAsync()
+    {
+        if (produtoAdicionaisId is null)
+            return;
+
+        salvandoAdicionais = true;
+        erro = null;
+
+        try
+        {
+            await ProdutoService.SalvarAdicionaisDoProdutoAsync(
+                produtoAdicionaisId.Value,
+                adicionaisProduto);
+
+            FecharAdicionais();
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível salvar os adicionais do produto.";
+        }
+        finally
+        {
+            salvandoAdicionais = false;
+        }
+    }
+}

@@ -1,0 +1,213 @@
+﻿@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@page "/categorias"
+@using BlazorApp.Models.Entities
+@using BlazorApp.Services
+
+@inject ICategoriaService CategoriaService
+@rendermode InteractiveServer
+
+<PageTitle>Categorias</PageTitle>
+
+<h3>Categorias</h3>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="NovaCategoria">
+        Nova categoria
+    </button>
+</div>
+
+@if (carregando)
+{
+    <p>Carregando categorias...</p>
+}
+else if (!string.IsNullOrWhiteSpace(erro))
+{
+    <div class="alert alert-danger">@erro</div>
+}
+else
+{
+    @if (editando)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">
+                    @(categoria.Id == 0 ? "Nova categoria" : "Editar categoria")
+                </h5>
+
+                <EditForm Model="categoria" OnValidSubmit="SalvarAsync">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label">Nome</label>
+                        <InputText class="form-control" @bind-Value="categoria.Nome" />
+                        <ValidationMessage For="@(() => categoria.Nome)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Ordem de exibição</label>
+                        <InputNumber class="form-control" @bind-Value="categoria.OrdemExibicao" />
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <InputCheckbox class="form-check-input" @bind-Value="categoria.Ativo" />
+                        <label class="form-check-label">Categoria ativa</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" disabled="@salvando">
+                        @(salvando ? "Salvando..." : "Salvar")
+                    </button>
+
+                    <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
+                        Cancelar
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    @if (categorias.Count == 0)
+    {
+        <div class="alert alert-info">
+            Nenhuma categoria cadastrada.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Ordem</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in categorias)
+                    {
+                        <tr @key="item.Id">
+                            <td>@item.Nome</td>
+                            <td>@item.OrdemExibicao</td>
+                            <td>
+                                @if (item.Ativo)
+                                {
+                                    <span class="badge bg-success">Ativa</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inativa</span>
+                                }
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => Editar(item)">
+                                    Editar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    private List<Categoria> categorias = new();
+    private Categoria categoria = new();
+    private bool carregando = true;
+    private bool editando;
+    private bool salvando;
+    private string? erro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        carregando = true;
+        erro = null;
+
+        try
+        {
+            categorias = await CategoriaService.ListarTodasAsync();
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível carregar as categorias.";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private void NovaCategoria()
+    {
+        categoria = new Categoria();
+        editando = true;
+        erro = null;
+    }
+
+    private void Editar(Categoria item)
+    {
+        categoria = new Categoria
+        {
+            Id = item.Id,
+            Nome = item.Nome,
+            OrdemExibicao = item.OrdemExibicao,
+            Ativo = item.Ativo
+        };
+
+        editando = true;
+        erro = null;
+    }
+
+    private void CancelarEdicao()
+    {
+        editando = false;
+        categoria = new Categoria();
+        erro = null;
+    }
+
+    private async Task SalvarAsync()
+    {
+        salvando = true;
+        erro = null;
+
+        try
+        {
+            categoria.Nome = categoria.Nome.Trim();
+
+            if (string.IsNullOrWhiteSpace(categoria.Nome))
+            {
+                erro = "Informe o nome da categoria.";
+                return;
+            }
+
+            if (categoria.Id == 0)
+            {
+                await CategoriaService.CriarAsync(categoria);
+            }
+            else
+            {
+                await CategoriaService.AtualizarAsync(categoria);
+            }
+
+            editando = false;
+            categoria = new Categoria();
+
+            await CarregarAsync();
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível salvar a categoria.";
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+}

@@ -1,0 +1,239 @@
+﻿@page "/adicionais"
+
+@using BlazorApp.Models.Entities
+@using BlazorApp.Services
+
+@inject IAdicionalService AdicionalService
+@rendermode InteractiveServer
+
+<PageTitle>Adicionais</PageTitle>
+
+<h3>Adicionais</h3>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="NovoAdicional">
+        Novo adicional
+    </button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(erro))
+{
+    <div class="alert alert-danger">@erro</div>
+}
+
+@if (editando)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">
+                @(adicional.Id == 0 ? "Novo adicional" : "Editar adicional")
+            </h5>
+
+            <EditForm Model="adicional" OnValidSubmit="SalvarAsync">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label">Nome</label>
+                    <InputText class="form-control" @bind-Value="adicional.Nome" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Preço (R$)</label>
+                    <InputNumber class="form-control" @bind-Value="adicional.Preco" step="0.01" min="0" />
+                </div>
+
+                <div class="form-check mb-2">
+                    <InputCheckbox class="form-check-input" @bind-Value="adicional.Ativo" />
+                    <label class="form-check-label">Adicional ativo</label>
+                </div>
+
+                <div class="form-check mb-3">
+                    <InputCheckbox class="form-check-input" @bind-Value="adicional.Disponivel" />
+                    <label class="form-check-label">Disponível para venda</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary" disabled="@salvando">
+                    @(salvando ? "Salvando..." : "Salvar")
+                </button>
+
+                <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelarEdicao" disabled="@salvando">
+                    Cancelar
+                </button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@if (carregando)
+{
+    <p>Carregando adicionais...</p>
+}
+else if (adicionais.Count == 0)
+{
+    <div class="alert alert-info">
+        Nenhum adicional cadastrado.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Preço</th>
+                    <th>Status</th>
+                    <th>Disponibilidade</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in adicionais)
+                {
+                    <tr @key="item.Id">
+                        <td>@item.Nome</td>
+                        <td>@item.Preco.ToString("C2", cultura)</td>
+                        <td>
+                            @if (item.Ativo)
+                            {
+                                <span class="badge bg-success">Ativo</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inativo</span>
+                            }
+                        </td>
+                        <td>
+                            @if (item.Disponivel)
+                            {
+                                <span class="badge bg-success">Disponível</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">
+                                    Indisponível
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => Editar(item)">
+                                Editar
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<Adicional> adicionais = new();
+    private Adicional adicional = new();
+
+    private bool carregando = true;
+    private bool editando;
+    private bool salvando;
+    private string? erro;
+
+    private readonly System.Globalization.CultureInfo cultura =
+        System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        carregando = true;
+        erro = null;
+
+        try
+        {
+            adicionais = await AdicionalService.ListarTodosAsync();
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível carregar os adicionais.";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private void NovoAdicional()
+    {
+        adicional = new Adicional();
+        editando = true;
+        erro = null;
+    }
+
+    private void Editar(Adicional item)
+    {
+        adicional = new Adicional
+        {
+            Id = item.Id,
+            Nome = item.Nome,
+            Preco = item.Preco,
+            Ativo = item.Ativo,
+            Disponivel = item.Disponivel
+        };
+
+        editando = true;
+        erro = null;
+    }
+
+    private void CancelarEdicao()
+    {
+        editando = false;
+        adicional = new Adicional();
+        erro = null;
+    }
+
+    private async Task SalvarAsync()
+    {
+        erro = null;
+        adicional.Nome = adicional.Nome.Trim();
+
+        if (string.IsNullOrWhiteSpace(adicional.Nome))
+        {
+            erro = "Informe o nome do adicional.";
+            return;
+        }
+
+        if (adicional.Preco < 0)
+        {
+            erro = "O preço não pode ser negativo.";
+            return;
+        }
+
+        salvando = true;
+
+        try
+        {
+            if (adicional.Id == 0)
+            {
+                await AdicionalService.CriarAsync(adicional);
+            }
+            else
+            {
+                await AdicionalService.AtualizarAsync(adicional);
+            }
+
+            editando = false;
+            adicional = new Adicional();
+
+            await CarregarAsync();
+        }
+        catch (Exception)
+        {
+            erro = "Não foi possível salvar o adicional.";
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+}
