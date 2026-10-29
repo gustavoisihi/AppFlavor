@@ -16,11 +16,6 @@
     </button>
 </div>
 
-@if (!string.IsNullOrWhiteSpace(erro))
-{
-    <div class="alert alert-danger">@erro</div>
-}
-
 @if (editando)
 {
     <div class="modal-produto-fundo">
@@ -29,7 +24,10 @@
                 <h5 class="mb-0">
                     @(adicional.Id == 0 ? "Novo adicional" : "Editar adicional")
                 </h5>
-
+                @if (!string.IsNullOrWhiteSpace(erro))
+                {
+                    <div class="alert alert-danger">@erro</div>
+                }
                 <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="CancelarEdicao" disabled="@salvando">
                     &times;
                 </button>

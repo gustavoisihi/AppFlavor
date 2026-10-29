@@ -34,7 +34,10 @@ else
                     <h5 class="mb-0">
                         @(categoria.Id == 0 ? "Nova categoria" : "Editar categoria")
                     </h5>
-
+                    if (!string.IsNullOrWhiteSpace(erro))
+                    {
+                    <div class="alert alert-danger">@erro</div>
+                    }
                     <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="CancelarEdicao" disabled="@salvando">
                         &times;
                     </button>

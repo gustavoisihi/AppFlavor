@@ -17,12 +17,6 @@
     </button>
 </div>
 
-@if (!string.IsNullOrWhiteSpace(erro))
-{
-    <div class="alert alert-danger">@erro</div>
-}
-
-
 @if (editando)
 {
     <div class="modal-produto-fundo">
@@ -31,6 +25,11 @@
                 <h5 class="mb-0">
                     @(produto.Id == 0 ? "Novo produto" : "Editar produto")
                 </h5>
+
+                @if (!string.IsNullOrWhiteSpace(erro))
+                {
+                    <div class="alert alert-danger">@erro</div>
+                }
 
                 <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="CancelarEdicao" disabled="@salvando">
                     &times;
@@ -150,6 +149,10 @@
                         Ingredientes do produto
                     </h5>
                     <p>Configure os ingredientes e as opções do cliente.</p>
+                    @if (!string.IsNullOrWhiteSpace(erro))
+                    {
+                        <div class="alert alert-danger">@erro</div>
+                    }
                 </div>
 
                 <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="FecharIngredientes" disabled="@salvandoIngredientes">
@@ -220,6 +223,10 @@
                         Adicionais do produto
                     </h5>
                     <p>Escolha quais adicionais estarão disponíveis para o cliente.</p>
+                    @if (!string.IsNullOrWhiteSpace(erro))
+                    {
+                        <div class="alert alert-danger">@erro</div>
+                    }
                 </div>
 
                 <button type="button" class="btn-fechar-modal" aria-label="Fechar" @onclick="FecharAdicionais" disabled="@salvandoAdicionais">
