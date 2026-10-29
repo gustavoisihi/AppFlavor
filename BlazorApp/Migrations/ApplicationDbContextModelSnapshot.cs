@@ -213,6 +213,10 @@ namespace BlazorApp.Migrations
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("NomeCliente")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Observacao")
                         .HasColumnType("text");
 

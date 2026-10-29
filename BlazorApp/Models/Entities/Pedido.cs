@@ -6,6 +6,7 @@ public class Pedido
 {
     public long Id { get; set; }
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
+    public string NomeCliente { get; set; } = string.Empty;
 
     public StatusPreparo StatusPreparo { get; set; } = StatusPreparo.Novo;
     public StatusPagamento StatusPagamento { get; set; } = StatusPagamento.Pendente;

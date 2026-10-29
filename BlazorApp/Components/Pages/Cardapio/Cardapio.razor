@@ -228,6 +228,22 @@
             <div class="card-body">
                 <h2 class="h4">Seu pedido</h2>
 
+                <div class="mb-3 mt-3">
+                    <label for="nomeCliente" class="form-label">
+                        Nome do cliente *
+                    </label>
+
+                    <InputText id="nomeCliente"
+                               class="form-control"
+                               @bind-Value="nomeCliente"
+                               maxlength="100"
+                               placeholder="Digite seu nome" />
+
+                    <small class="text-muted">
+                        Informe seu nome para a cozinha identificar o pedido.
+                    </small>
+                </div>
+
                 @foreach (var item in carrinho)
                 {
                     <div class="border-bottom py-3" @key="item.Chave">
@@ -252,16 +268,18 @@
 
                             <div class="text-end">
                                 <strong>
-                                    @item.Total.ToString("C2",System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                                    @item.Total.ToString(
+                                        "C2",
+                                        System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
                                 </strong>
 
                                 <div>
-                                    <button class="btn btn-sm btn-outline-danger mt-1" @onclick="() => RemoverDoCarrinho(item.Chave)">
+                                    <button class="btn btn-sm btn-outline-danger mt-1"
+                                            @onclick="() => RemoverDoCarrinho(item.Chave)">
                                         Remover
                                     </button>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 }
@@ -269,11 +287,15 @@
                 <div class="d-flex justify-content-between mt-3">
                     <strong>Total do pedido</strong>
                     <strong>
-                        @carrinho.Sum(i => i.Total).ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                        @carrinho.Sum(i => i.Total).ToString(
+                            "C2",
+                            System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
                     </strong>
                 </div>
 
-                <button class="btn btn-primary w-100 mt-3" disabled="@(enviandoPedido || carrinho.Count == 0)" @onclick="ConfirmarPedidoAsync">
+                <button class="btn btn-primary w-100 mt-3"
+                        disabled="@(enviandoPedido || carrinho.Count == 0)"
+                        @onclick="ConfirmarPedidoAsync">
                     @(enviandoPedido ? "Enviando pedido..." : "Confirmar pedido")
                 </button>
             </div>
@@ -337,6 +359,7 @@
     private int quantidade = 1;
 
     private List<ItemCarrinhoDto> carrinho = new();
+    private string nomeCliente = string.Empty;
 
     private bool enviandoPedido;
     private string? mensagemSucesso;
@@ -349,6 +372,7 @@
     private IEnumerable<ProdutoCardapioDto> ProdutosExibidos =>categoriaSelecionada is null? produtos: produtos.Where(p => p.NomeCategoria == categoriaSelecionada);
 
     private ElementReference referenciaCarrinho;
+
 
     private async Task IrParaCarrinho()
     {
@@ -485,6 +509,18 @@
         if (carrinho.Count == 0 || enviandoPedido)
             return;
 
+        if (string.IsNullOrWhiteSpace(nomeCliente))
+        {
+            erro = "Informe seu nome para confirmar o pedido.";
+            return;
+        }
+
+        if (nomeCliente.Trim().Length > 100)
+        {
+            erro = "O nome deve ter no máximo 100 caracteres.";
+            return;
+        }
+
         enviandoPedido = true;
         mensagemSucesso = null;
         erro = null;
@@ -494,6 +530,8 @@
         {
             var request = new CriarPedidoRequest
             {
+                NomeCliente = nomeCliente.Trim(),
+
                 Itens = carrinho.Select(item => new CriarPedidoItemRequest
                 {
                     ProdutoId = item.ProdutoId,
@@ -514,7 +552,10 @@
 
             pedidoConfirmadoId = id;
             mensagemSucesso = $"Pedido #{id} enviado para a cozinha.";
+
             carrinho.Clear();
+            nomeCliente = string.Empty;
+
             CancelarPersonalizacao();
         }
         catch (InvalidOperationException ex)

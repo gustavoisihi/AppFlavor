@@ -27,6 +27,14 @@ public class PedidoService : IPedidoService
             throw new InvalidOperationException(
                 "A quantidade dos produtos deve estar entre 1 e 99.");
 
+        if (string.IsNullOrWhiteSpace(request.NomeCliente))
+            throw new InvalidOperationException(
+                "Informe o nome do cliente.");
+
+        if (request.NomeCliente.Trim().Length > 100)
+            throw new InvalidOperationException(
+                "O nome do cliente deve ter no máximo 100 caracteres.");
+
         await using var context =
             await _contextFactory.CreateDbContextAsync();
 
@@ -35,6 +43,7 @@ public class PedidoService : IPedidoService
 
         var pedido = new Pedido
         {
+            NomeCliente = request.NomeCliente.Trim(),
             CriadoEm = DateTime.UtcNow,
             StatusPreparo = StatusPreparo.Novo,
             StatusPagamento = StatusPagamento.Pendente,
@@ -183,6 +192,7 @@ public class PedidoService : IPedidoService
             {
                 Id = p.Id,
                 CriadoEm = p.CriadoEm,
+                NomeCliente = p.NomeCliente,
                 StatusPreparo = p.StatusPreparo.ToString(),
                 Observacao = p.Observacao,
 
