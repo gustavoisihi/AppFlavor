@@ -170,8 +170,17 @@ public class PedidoService : IPedidoService
         pedido.ValorTotal = valorTotal;
 
         context.Pedidos.Add(pedido);
+        await context.SaveChangesAsync();
+
+        // Registra a comanda na fila de impressão.
+        context.ImpressoesComandas.Add(new ImpressaoComanda
+        {
+            PedidoId = pedido.Id,
+            Status = "Pendente"
+        });
 
         await context.SaveChangesAsync();
+
         await transaction.CommitAsync();
 
         return pedido.Id;
@@ -314,6 +323,50 @@ public class PedidoService : IPedidoService
         };
 
         return resumo;
+    }
+
+
+    public async Task<ComandaDto?> ObterComandaAsync(long pedidoId)
+    {
+        await using var context =
+            await _contextFactory.CreateDbContextAsync();
+
+        var pedido = await context.Pedidos
+            .AsNoTracking()
+            .Where(p => p.Id == pedidoId)
+            .Select(p => new ComandaDto
+            {
+                Id = p.Id,
+                CriadoEm = p.CriadoEm,
+                NomeCliente = p.NomeCliente,
+                Observacao = p.Observacao,
+                ValorTotal = p.ValorTotal,
+
+                Itens = p.Itens.Select(i => new ItemComandaDto
+                {
+                    NomeProduto = i.NomeProduto,
+                    PrecoUnitario = i.PrecoUnitario,
+                    Quantidade = i.Quantidade,
+                    TotalItem = i.TotalItem,
+                    Observacao = i.Observacao,
+
+                    IngredientesRemovidos = i.IngredientesRemovidos
+                        .Select(ing => ing.NomeIngrediente)
+                        .ToList(),
+
+                    Adicionais = i.Adicionais
+                        .Select(a => new AdicionalComandaDto
+                        {
+                            NomeAdicional = a.NomeAdicional,
+                            PrecoUnitario = a.PrecoUnitario,
+                            Quantidade = a.Quantidade
+                        })
+                        .ToList()
+                }).ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        return pedido;
     }
 
 }

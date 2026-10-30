@@ -1,0 +1,148 @@
+﻿@page "/impressoes"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using BlazorApp.Models.Dtos
+@using BlazorApp.Services
+@using Microsoft.JSInterop
+@inject ImpressaoComandaService ImpressaoService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Impressões</PageTitle>
+
+<h3>Fila de impressão</h3>
+
+<p class="text-muted">
+    Comandas com falha ou que precisam de conferência manual.
+</p>
+
+<div class="mb-3">
+    <button class="btn btn-outline-primary"
+            @onclick="CarregarComandasAsync"
+            disabled="@Carregando">
+        Atualizar lista
+    </button>
+</div>
+
+@if (Carregando)
+{
+    <p>Carregando comandas...</p>
+}
+else if (Comandas.Count == 0)
+{
+    <div class="alert alert-success">
+        Nenhuma comanda precisa de revisão.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th>Status</th>
+                    <th>Tentativas</th>
+                    <th>Última tentativa</th>
+                    <th>Mensagem</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var comanda in Comandas)
+                {
+                    <tr @key="comanda.PedidoId">
+                        <td>#@comanda.PedidoId</td>
+                        <td>@comanda.NomeCliente</td>
+                        <td>
+                            @if (comanda.Status == "Erro")
+                            {
+                                <span class="badge bg-danger">Erro</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">
+                                    Revisar
+                                </span>
+                            }
+                        </td>
+                        <td>@comanda.Tentativas</td>
+                        <td>
+                            @(comanda.UltimaTentativaEm?.ToLocalTime()
+                                .ToString("dd/MM/yyyy HH:mm") ?? "—")
+                        </td>
+                        <td>@(comanda.MensagemErro ?? "—")</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary"
+                                    @onclick="() => ReprocessarAsync(comanda)"
+                                    disabled="@Carregando">
+                                Reimprimir
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<ImpressaoComandaDto> Comandas = new();
+    private bool Carregando;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarComandasAsync();
+    }
+
+    private async Task CarregarComandasAsync()
+    {
+        Carregando = true;
+
+        try
+        {
+            Comandas =
+                await ImpressaoService.ListarComandasParaRevisaoAsync();
+        }
+        finally
+        {
+            Carregando = false;
+        }
+    }
+    private async Task ReprocessarAsync(ImpressaoComandaDto comanda)
+    {
+        var confirmado = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Você verificou que a comanda #{comanda.PedidoId} não foi impressa? Deseja tentar imprimir novamente?");
+
+        if (!confirmado)
+            return;
+
+        Carregando = true;
+
+        try
+        {
+            var sucesso = await ImpressaoService
+                .ReprocessarManualAsync(comanda.PedidoId);
+
+            await CarregarComandasAsync();
+
+            if (sucesso)
+            {
+                await JS.InvokeVoidAsync(
+                    "alert",
+                    $"O pedido #{comanda.PedidoId} foi enviado à impressora.");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync(
+                    "alert",
+                    "Não foi possível concluir a impressão. Confira o status da comanda.");
+            }
+        }
+        finally
+        {
+            Carregando = false;
+        }
+    }
+}

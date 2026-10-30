@@ -2,6 +2,7 @@ using BlazorApp.Components;
 using BlazorApp.Components.Account;
 using BlazorApp.Data;
 using BlazorApp.Services;
+using BlazorApp.Services.Impressao;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -45,6 +46,15 @@ builder.Services.AddScoped<ICategoriaService, CategoriaService>();
 builder.Services.AddScoped<IIngredientesService, IngredientesService>();
 builder.Services.AddScoped<IAdicionalService, AdicionalService>();
 builder.Services.AddScoped<IPedidoService, PedidoService>();
+builder.Services.AddScoped<ImpressaoComandaService>();
+if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+{
+    builder.Services.AddHostedService<ProcessadorFilaImpressao>();
+}
+if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+{
+    builder.Services.AddScoped<ImpressoraWindows>();
+}
 
 var app = builder.Build();
 

@@ -23,6 +23,7 @@ public class ApplicationDbContext(
     public DbSet<PedidoItemIngrediente> PedidosItensIngredientes => Set<PedidoItemIngrediente>();
     public DbSet<PedidoItemAdicional> PedidosItensAdicionais => Set<PedidoItemAdicional>();
     public DbSet<Pagamento> Pagamentos => Set<Pagamento>();
+    public DbSet<ImpressaoComanda> ImpressoesComandas => Set<ImpressaoComanda>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -144,5 +145,25 @@ public class ApplicationDbContext(
             .WithMany()
             .HasForeignKey(p => p.RegistradoPorUsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Fila de impressão de comandas
+        builder.Entity<ImpressaoComanda>()
+            .HasIndex(i => i.PedidoId)
+            .IsUnique();
+
+        builder.Entity<ImpressaoComanda>()
+            .HasOne(i => i.Pedido)
+            .WithMany()
+            .HasForeignKey(i => i.PedidoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ImpressaoComanda>()
+            .Property(i => i.Status)
+            .HasMaxLength(20);
+
+        builder.Entity<ImpressaoComanda>()
+            .Property(i => i.MensagemErro)
+            .HasMaxLength(1000);
+
     }
 }

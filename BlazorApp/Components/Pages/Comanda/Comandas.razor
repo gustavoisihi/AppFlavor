@@ -1,0 +1,219 @@
+﻿@page "/comanda/{PedidoId:long}"
+@using Microsoft.JSInterop
+@using BlazorApp.Models.Dtos
+@using BlazorApp.Services
+@inject IPedidoService PedidoService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Comanda</PageTitle>
+
+@if (carregando)
+{
+    <p>Carregando comanda...</p>
+}
+else if (comanda is null)
+{
+    <div class="alert alert-warning">
+        Pedido não encontrado.
+    </div>
+}
+else
+{
+    <div class="comanda">
+        <div class="text-center">
+            <h3>COMANDA DE PREPARO</h3>
+            <h4>Pedido #@comanda.Id</h4>
+        </div>
+
+        <hr />
+
+        <p>
+            <strong>Cliente:</strong> @comanda.NomeCliente
+        </p>
+
+        <p>
+            <strong>Data:</strong>
+            @comanda.CriadoEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+        </p>
+
+        <hr />
+
+        @foreach (var item in comanda.Itens)
+        {
+            <div class="item-comanda">
+                <div class="d-flex justify-content-between gap-2">
+                    <strong>
+                        @item.Quantidade x @item.NomeProduto
+                    </strong>
+
+                    <strong>
+                        @item.TotalItem.ToString("C2",
+                            System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                    </strong>
+                </div>
+
+                <div class="detalhes">
+                    <div>
+                        Unitário:
+                        @item.PrecoUnitario.ToString("C2",
+                            System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+                    </div>
+
+                    @if (item.IngredientesRemovidos.Count > 0)
+                    {
+                        <div>
+                            <strong>Sem:</strong>
+                            @string.Join(", ", item.IngredientesRemovidos)
+                        </div>
+                    }
+
+                    @if (item.Adicionais.Count > 0)
+                    {
+                        <div>
+                            <strong>Adicionais:</strong>
+
+                            @foreach (var adicional in item.Adicionais)
+                            {
+                                <div>
+                                    @adicional.Quantidade x @adicional.NomeAdicional
+                                    (+@((adicional.PrecoUnitario *
+                                                                            adicional.Quantidade).ToString("C2",
+                                                                            System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))))
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(item.Observacao))
+                    {
+                        <div>
+                            <strong>Observação:</strong> @item.Observacao
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <hr />
+        }
+
+        @if (!string.IsNullOrWhiteSpace(comanda.Observacao))
+        {
+            <p>
+                <strong>Observação do pedido:</strong>
+                @comanda.Observacao
+            </p>
+
+            <hr />
+        }
+
+        <div class="d-flex justify-content-between total-comanda">
+            <strong>TOTAL DO PEDIDO</strong>
+
+            <strong>
+                @comanda.ValorTotal.ToString("C2",
+                    System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))
+            </strong>
+        </div>
+
+        <p class="text-center mt-3">
+            Conferir personalizações antes de preparar.
+        </p>
+
+        <button class="btn btn-primary w-100 mt-3"
+                @onclick="Imprimir">
+            Imprimir teste
+        </button>
+    </div>
+}
+
+<style>
+    .comanda {
+        max-width: 420px;
+        margin: 24px auto;
+        padding: 20px;
+        background: white;
+        color: black;
+        border: 1px solid #ddd;
+        font-family: Arial, sans-serif;
+        overflow-wrap: anywhere;
+    }
+
+    .comanda h3 {
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    .comanda h4 {
+        font-size: 18px;
+    }
+
+    .item-comanda {
+        margin: 12px 0;
+    }
+
+    .detalhes {
+        margin-top: 5px;
+        font-size: 14px;
+    }
+
+    .total-comanda {
+        font-size: 18px;
+    }
+
+    
+@@media print {
+    @@page {
+        size: auto;
+        margin: 8mm;
+    }
+
+    body * {
+        visibility: hidden !important;
+    }
+
+    .comanda,
+    .comanda * {
+        visibility: visible !important;
+    }
+
+    .comanda {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+        color: black;
+        background: white;
+    }
+
+    .comanda button {
+        display: none !important;
+    }
+}
+
+</style>
+
+@code {
+    [Parameter]
+    public long PedidoId { get; set; }
+
+    private ComandaDto? comanda;
+    private bool carregando = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        carregando = true;
+        comanda = await PedidoService.ObterComandaAsync(PedidoId);
+        carregando = false;
+    }
+
+    private async Task Imprimir()
+    {
+        await JS.InvokeVoidAsync("window.print");
+    }
+}

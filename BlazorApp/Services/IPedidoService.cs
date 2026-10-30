@@ -11,4 +11,5 @@ public interface IPedidoService
     Task<List<PedidoCozinhaDto>> ListarPedidosCozinhaAsync();
     Task AtualizarStatusPreparoAsync(long pedidoId,StatusPreparo novoStatus);
     Task<ResumoVendasDto> ObterResumoVendasAsync(DateTime inicio,DateTime fim);
+    Task<ComandaDto?> ObterComandaAsync(long pedidoId);
 }
