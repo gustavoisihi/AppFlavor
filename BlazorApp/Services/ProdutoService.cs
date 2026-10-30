@@ -92,37 +92,31 @@ public class ProdutoService : IProdutoService
     }
 
 
+
+
     public async Task<List<IngredienteProdutoDto>>
         ListarIngredientesDoProdutoAsync(int produtoId)
     {
         await using var context =
             await _contextFactory.CreateDbContextAsync();
 
-        var ingredientesProduto = await context.ProdutosIngredientes
+        return await context.ProdutosIngredientes
             .AsNoTracking()
-            .Where(pi => pi.ProdutoId == produtoId)
-            .ToListAsync();
-
-        var ingredientes = await context.Ingredientes
-            .AsNoTracking()
-            .Where(i => i.Ativo)
-            .OrderBy(i => i.Nome)
-            .ToListAsync();
-
-        return ingredientes.Select(i =>
-        {
-            var associacao = ingredientesProduto
-                .FirstOrDefault(pi => pi.IngredienteId == i.Id);
-
-            return new IngredienteProdutoDto
+            .Where(pi =>
+                pi.ProdutoId == produtoId &&
+                pi.Ingrediente.Ativo)
+            .OrderBy(pi => pi.Ingrediente.Nome)
+            .Select(pi => new IngredienteProdutoDto
             {
-                IngredienteId = i.Id,
-                Nome = i.Nome,
-                InclusoPorPadrao = associacao?.InclusoPorPadrao ?? true,
-                PermiteRemover = associacao?.PermiteRemover ?? true
-            };
-        }).ToList();
+                IngredienteId = pi.IngredienteId,
+                Nome = pi.Ingrediente.Nome,
+                InclusoPorPadrao = pi.InclusoPorPadrao,
+                PermiteRemover = pi.PermiteRemover
+            })
+            .ToListAsync();
     }
+
+
 
     public async Task SalvarIngredientesDoProdutoAsync(
         int produtoId,
@@ -307,4 +301,34 @@ public class ProdutoService : IProdutoService
 
         return produtos;
     }
+
+
+
+    public async Task<List<IngredienteProdutoDto>>
+        ListarIngredientesDisponiveisAsync(int produtoId)
+    {
+        await using var context =
+            await _contextFactory.CreateDbContextAsync();
+
+        var associadosIds = await context.ProdutosIngredientes
+            .AsNoTracking()
+            .Where(pi => pi.ProdutoId == produtoId)
+            .Select(pi => pi.IngredienteId)
+            .ToListAsync();
+
+        return await context.Ingredientes
+            .AsNoTracking()
+            .Where(i => i.Ativo && !associadosIds.Contains(i.Id))
+            .OrderBy(i => i.Nome)
+            .Select(i => new IngredienteProdutoDto
+            {
+                IngredienteId = i.Id,
+                Nome = i.Nome,
+                InclusoPorPadrao = true,
+                PermiteRemover = true
+            })
+            .ToListAsync();
+    }
+
+
 }

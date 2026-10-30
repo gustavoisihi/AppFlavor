@@ -15,5 +15,6 @@ public interface IProdutoService
     Task<List<AdicionalProdutoDto>> ListarAdicionaisDoProdutoAsync(int produtoId);
     Task SalvarAdicionaisDoProdutoAsync(int produtoId,List<AdicionalProdutoDto> adicionais);
     Task<List<ProdutoCardapioDto>> ListarCardapioAsync();
+    Task<List<IngredienteProdutoDto>>ListarIngredientesDisponiveisAsync(int produtoId);
 
 }

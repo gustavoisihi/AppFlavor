@@ -160,40 +160,91 @@
                 </button>
             </div>
 
+            
             <div class="modal-produto-corpo">
+
+                <h6 class="mb-3">Ingredientes da composição</h6>
+
                 @if (ingredientesProduto.Count == 0)
                 {
-                    <div class="alert alert-info">
-                        Não há ingredientes ativos cadastrados.
-                    </div>
+                    <p class="text-muted">
+                        Nenhum ingrediente faz parte da composição deste produto.
+                    </p>
                 }
                 else
                 {
                     @foreach (var ingrediente in ingredientesProduto)
                     {
-                        <div class="item-configuracao" @key="ingrediente.IngredienteId">
+                        <div class="item-configuracao"
+                             @key="ingrediente.IngredienteId">
 
                             <strong>@ingrediente.Nome</strong>
 
                             <div class="form-check mt-2">
-                                <input class="form-check-input" type="checkbox" id="@($"incluso-{ingrediente.IngredienteId}")" @bind="ingrediente.InclusoPorPadrao" />
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="@($"incluso-{ingrediente.IngredienteId}")"
+                                       @bind="ingrediente.InclusoPorPadrao" />
 
-                                <label class="form-check-label" for="@($"incluso-{ingrediente.IngredienteId}")">
+                                <label class="form-check-label"
+                                       for="@($"incluso-{ingrediente.IngredienteId}")">
                                     Incluso por padrão
                                 </label>
                             </div>
 
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="@($"remover-{ingrediente.IngredienteId}")" @bind="ingrediente.PermiteRemover" />
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="@($"remover-{ingrediente.IngredienteId}")"
+                                       @bind="ingrediente.PermiteRemover" />
 
-                                <label class="form-check-label" for="@($"remover-{ingrediente.IngredienteId}")">
+                                <label class="form-check-label"
+                                       for="@($"remover-{ingrediente.IngredienteId}")">
                                     Cliente pode remover
                                 </label>
+                            </div>
+
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger mt-2"
+                                    @onclick="() => RemoverIngredienteDoProduto(ingrediente.IngredienteId)">
+                                Remover do produto
+                            </button>
+                        </div>
+                    }
+                }
+
+                <hr class="my-4" />
+
+                <h6 class="mb-3">Adicionar ingredientes à composição</h6>
+
+                @if (ingredientesDisponiveis.Count == 0)
+                {
+                    <p class="text-muted">
+                        Não há outros ingredientes ativos disponíveis para adicionar.
+                    </p>
+                }
+                else
+                {
+                    @foreach (var ingrediente in ingredientesDisponiveis)
+                    {
+                        <div class="item-configuracao"
+                             @key="ingrediente.IngredienteId">
+
+                            <strong>@ingrediente.Nome</strong>
+
+                            <div>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary mt-2"
+                                        @onclick="() => AdicionarIngredienteAoProduto(ingrediente.IngredienteId)">
+                                    Adicionar ao produto
+                                </button>
                             </div>
                         </div>
                     }
                 }
+
             </div>
+
 
             <div class="modal-produto-rodape">
                 <button type="button" class="btn btn-outline-secondary" @onclick="FecharIngredientes" disabled="@salvandoIngredientes">
@@ -355,7 +406,11 @@ else
     private readonly System.Globalization.CultureInfo cultura = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
 
     private int? produtoIngredientesId;
+
     private List<IngredienteProdutoDto> ingredientesProduto = new();
+
+    private List<IngredienteProdutoDto> ingredientesDisponiveis = new();
+
     private bool salvandoIngredientes;
 
     private int? produtoAdicionaisId;
@@ -498,10 +553,16 @@ else
 
             ingredientesProduto =
                 await ProdutoService.ListarIngredientesDoProdutoAsync(item.Id);
+
+            ingredientesDisponiveis =
+                await ProdutoService.ListarIngredientesDisponiveisAsync(item.Id);
         }
         catch (Exception)
         {
             produtoIngredientesId = null;
+            ingredientesProduto = new();
+            ingredientesDisponiveis = new();
+
             erro = "Não foi possível carregar os ingredientes do produto.";
         }
     }
@@ -510,7 +571,54 @@ else
     {
         produtoIngredientesId = null;
         ingredientesProduto = new();
+        ingredientesDisponiveis = new();
         erro = null;
+    }
+
+    private void RemoverIngredienteDoProduto(int ingredienteId)
+    {
+        var ingrediente = ingredientesProduto
+            .FirstOrDefault(i => i.IngredienteId == ingredienteId);
+
+        if (ingrediente is null)
+            return;
+
+        ingredientesProduto.Remove(ingrediente);
+
+        ingredientesDisponiveis.Add(new IngredienteProdutoDto
+        {
+            IngredienteId = ingrediente.IngredienteId,
+            Nome = ingrediente.Nome,
+            InclusoPorPadrao = true,
+            PermiteRemover = true
+        });
+
+        ingredientesDisponiveis = ingredientesDisponiveis
+            .OrderBy(i => i.Nome)
+            .ToList();
+    }
+
+    private void AdicionarIngredienteAoProduto(int ingredienteId)
+    {
+        var ingrediente = ingredientesDisponiveis
+            .FirstOrDefault(i => i.IngredienteId == ingredienteId);
+
+        if (ingrediente is null)
+            return;
+
+        ingredientesDisponiveis.Remove(ingrediente);
+
+        ingredientesProduto.Add(new IngredienteProdutoDto
+        {
+            IngredienteId = ingrediente.IngredienteId,
+            Nome = ingrediente.Nome,
+            InclusoPorPadrao = true,
+            PermiteRemover = true
+        });
+
+        ingredientesProduto = ingredientesProduto
+            .OrderBy(i => i.Nome)
+            .ToList();
     }
 
     private async Task SalvarIngredientesAsync()
