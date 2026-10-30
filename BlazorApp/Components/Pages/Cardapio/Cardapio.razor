@@ -11,9 +11,9 @@
 <PageTitle>Cardápio</PageTitle>
 
 <div class="content">
-    <h1 class="mb-2">Nosso cardápio</h1>
+    <h1 class="mb-2">Montes Artesanais | Nosso cardápio</h1>
     <p class="text-muted mb-4">
-        Escolha seu pedido e personalize como preferir.
+        Aqui você encontra os melhores lanches artesanais da região!
     </p>
 
     @if (carregando)
@@ -37,16 +37,18 @@
             <aside class="menu-categorias">
                 <h2>Categorias</h2>
 
-                <button type="button" class="categoria-link @(categoriaSelecionada is null ? "selecionada" : "")" @onclick="() => SelecionarCategoria(null)">
-                    Todas
-                </button>
-
-                @foreach (var categoria in Categorias)
-                {
-                    <button type="button" class="categoria-link @(categoriaSelecionada == categoria ? "selecionada" : "")" @onclick="() => SelecionarCategoria(categoria)" @key="categoria">
-                        @categoria
+                <nav class="lista-categorias">
+                    <button type="button" class="categoria-link @(categoriaSelecionada is null ? "selecionada" : "")" @onclick="() => SelecionarCategoria(null)">
+                        <span>Todas</span>
                     </button>
-                }
+
+                    @foreach (var categoria in Categorias)
+                    {
+                        <button type="button" class="categoria-link @(categoriaSelecionada == categoria ? "selecionada" : "")" @onclick="() => SelecionarCategoria(categoria)" @key="categoria">
+                            <span>@categoria</span>
+                        </button>
+                    }
+                </nav>
             </aside>
 
             <div class="lista-produtos">
@@ -131,24 +133,28 @@
                     {
                         <h3>Ingredientes</h3>
 
-                        @foreach (var ingrediente in produtoSelecionado.Ingredientes)
-                        {
-                            <div class="form-check mb-2">
-                                <input class="form-check-input"type="checkbox"id="@($"ing-{ingrediente.Id}")" checked="@(!ingredientesRemovidos.Contains(ingrediente.Id)&& ingrediente.InclusoPorPadrao)" 
-                                disabled="@(!ingrediente.PermiteRemover || !ingrediente.InclusoPorPadrao)" @onchange="(e) => AlternarIngrediente(ingrediente.Id, e.Value)" />
+                        <div class="row">
+                            @foreach (var ingrediente in produtoSelecionado.Ingredientes)
+                            {
+                                <div class="col-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="@($"ing-{ingrediente.Id}")" checked="@(!ingredientesRemovidos.Contains(ingrediente.Id) && ingrediente.InclusoPorPadrao)"
+                                               disabled="@(!ingrediente.PermiteRemover || !ingrediente.InclusoPorPadrao)" @onchange="(e) => AlternarIngrediente(ingrediente.Id, e.Value)" />
 
-                                <label class="form-check-label" for="@($"ing-{ingrediente.Id}")">
-                                    @ingrediente.Nome
+                                        <label class="form-check-label" for="@($"ing-{ingrediente.Id}")">
+                                            @ingrediente.Nome
 
-                                    @if (!ingrediente.PermiteRemover)
-                                    {
-                                        <span class="text-muted">
-                                            (não pode remover)
-                                        </span>
-                                    }
-                                </label>
-                            </div>
-                        }
+                                            @if (!ingrediente.PermiteRemover)
+                                            {
+                                                <span class="text-muted">
+                                                    (não pode remover)
+                                                </span>
+                                            }
+                                        </label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
                     }
 
                     @if (produtoSelecionado.Adicionais.Any())

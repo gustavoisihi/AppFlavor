@@ -48,22 +48,64 @@
 }
 
 .menu-categorias {
-    position: sticky;
-    top: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 18px 12px;
-    background: var(--menu-surface);
-    border: 1px solid var(--menu-border);
-    border-radius: 14px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    align-self: flex-start;
+    padding: 20px 14px;
+    background: var(--tm-surface, #242424);
+    border: 1px solid var(--tm-line, #49443e);
+    border-radius: 16px;
 }
 
     .menu-categorias h2 {
-        margin: 0 8px 12px;
-        font-size: 1rem;
+        margin: 0 0 16px;
+        padding: 0 10px;
+        color: var(--tm-ink, #f5f1ea);
+        font-size: 0.8rem;
         font-weight: 700;
-        color: var(--menu-text);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+.lista-categorias {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.categoria-link {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 12px;
+    color: var(--tm-ink-muted, #aaa39a);
+    text-align: left;
+    font-size: 0.95rem;
+    font-weight: 500;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+    .categoria-link:hover {
+        color: var(--tm-ink, #f5f1ea);
+        background: var(--tm-surface-hover, #303030);
+    }
+
+    .categoria-link.selecionada {
+        color: var(--tm-ink, #f5f1ea);
+        background: var(--tm-surface-hover, #303030);
+        border-color: var(--tm-line, #49443e);
+        box-shadow: inset 3px 0 0 var(--tm-accent, #c99b55);
+    }
+
+    .categoria-link:focus-visible {
+        outline: 2px solid var(--tm-accent, #c99b55);
+        outline-offset: 2px;
     }
 
 .categoria-link {
@@ -395,11 +437,9 @@
     }
 
     .menu-categorias {
-        position: static;
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 6px;
-        padding: 12px;
+        width: 100%;
+        min-width: 0;
+        padding: 16px 12px;
     }
 
         .menu-categorias h2 {
