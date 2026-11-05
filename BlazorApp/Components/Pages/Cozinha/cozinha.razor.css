@@ -251,3 +251,33 @@
         flex-wrap: wrap;
     }
 }
+
+.kds-timer {
+    padding: 5px 9px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 900;
+    transition: background-color .3s, color .3s;
+}
+
+    .kds-timer.normal {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .kds-timer.atencao {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .kds-timer.atrasado {
+        background: #fee2e2;
+        color: #b91c1c;
+        animation: pulsar-atraso 1.5s infinite;
+    }
+
+@keyframes pulsar-atraso {
+    50% {
+        background: #fca5a5;
+    }
+}

@@ -70,7 +70,9 @@
                     <article class="kds-order-card novo" @key="pedido.Id">
                         <div class="kds-order-header">
                             <strong>#@pedido.Id</strong>
-                            <span>@FormatarTempo(pedido.CriadoEm)</span>
+                            <span class="kds-timer @ClasseTempo(pedido.CriadoEm)">
+                                @FormatarTempo(pedido.CriadoEm)
+                            </span>
                         </div>
 
                         <div class="kds-customer">
@@ -138,7 +140,9 @@
                     <article class="kds-order-card preparo" @key="pedido.Id">
                         <div class="kds-order-header">
                             <strong>#@pedido.Id</strong>
-                            <span>@FormatarTempo(pedido.CriadoEm)</span>
+                            <span class="kds-timer @ClasseTempo(pedido.CriadoEm)">
+                                @FormatarTempo(pedido.CriadoEm)
+                            </span>
                         </div>
 
                         <div class="kds-customer">
@@ -206,7 +210,9 @@
                     <article class="kds-order-card pronto" @key="pedido.Id">
                         <div class="kds-order-header">
                             <strong>#@pedido.Id</strong>
-                            <span>@FormatarTempo(pedido.CriadoEm)</span>
+                            <span class="kds-timer @ClasseTempo(pedido.CriadoEm)">
+                                @FormatarTempo(pedido.CriadoEm)
+                            </span>
                         </div>
 
                         <div class="kds-customer">
@@ -270,19 +276,23 @@
     private CancellationTokenSource? cancelamento;
 
     private IEnumerable<PedidoCozinhaDto> PedidosNovos => pedidos.Where(p => p.StatusPreparo == nameof(StatusPreparo.Novo));
-
     private IEnumerable<PedidoCozinhaDto> PedidosEmPreparo => pedidos.Where(p => p.StatusPreparo == nameof(StatusPreparo.EmPreparo));
-
     private IEnumerable<PedidoCozinhaDto> PedidosProntos => pedidos.Where(p => p.StatusPreparo == nameof(StatusPreparo.Pronto));
+    private PeriodicTimer? timerRelogio;
 
     protected override async Task OnInitializedAsync()
     {
         await CarregarPedidosAsync();
 
         cancelamento = new CancellationTokenSource();
-        timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
 
+        // Atualiza os pedidos a cada 10 segundos
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
         _ = AtualizarPeriodicamenteAsync(cancelamento.Token);
+
+        // Atualiza o cronômetro a cada segundo
+        timerRelogio = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = AtualizarRelogioAsync(cancelamento.Token);
     }
 
     private async Task CarregarPedidosAsync()
@@ -359,17 +369,58 @@
     public void Dispose()
     {
         cancelamento?.Cancel();
+
         timer?.Dispose();
+        timerRelogio?.Dispose();
+
         cancelamento?.Dispose();
+    }
+
+    private async Task AtualizarRelogioAsync(
+    CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (timerRelogio is not null &&
+                   await timerRelogio.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // A página foi encerrada.
+        }
+        catch (ObjectDisposedException)
+        {
+            // O temporizador foi descartado.
+        }
+    }
+
+    private TimeSpan ObterTempoDecorrido(DateTime criadoEm)
+    {
+        var tempo = DateTime.Now - criadoEm.ToLocalTime();
+
+        return tempo < TimeSpan.Zero ? TimeSpan.Zero : tempo;
     }
 
     private string FormatarTempo(DateTime criadoEm)
     {
-        var tempo = DateTime.Now - criadoEm.ToLocalTime();
+        var tempo = ObterTempoDecorrido(criadoEm);
 
-        if (tempo < TimeSpan.Zero)
-            tempo = TimeSpan.Zero;
+        return $"{(int)tempo.TotalHours:00}:{tempo.Minutes:00}:{tempo.Seconds:00}";
+    }
 
-        return $"{(int)tempo.TotalHours:00}:{tempo.Minutes:00}";
+    private string ClasseTempo(DateTime criadoEm)
+    {
+        var tempo = ObterTempoDecorrido(criadoEm);
+
+        if (tempo.TotalMinutes >= 10)
+            return "atrasado";
+
+        if (tempo.TotalMinutes >= 5)
+            return "atencao";
+
+        return "normal";
     }
 }
