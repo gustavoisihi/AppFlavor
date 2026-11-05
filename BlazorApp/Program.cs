@@ -65,7 +65,7 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 }
 
-//await IdentitySeeder.SeedAsync(app.Services, app.Configuration);
+await IdentitySeeder.SeedAsync(app.Services, app.Configuration);
 //await CardapioSeeder.SeedAsync(app.Services);
 
 // Configure the HTTP request pipeline.
