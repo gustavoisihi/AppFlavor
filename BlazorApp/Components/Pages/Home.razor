@@ -1,7 +1,7 @@
 ﻿@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @page "/"
 @rendermode InteractiveServer
-
+@using System.Globalization
 @using BlazorApp.Models.Dtos
 @using BlazorApp.Services
 
@@ -85,7 +85,7 @@
                 <div class="card h-100 shadow-sm">
                     <div class="card-body">
                         <p class="text-muted mb-1">Valor dos pedidos</p>
-                        <h2>@resumo.ValorTotalPedidos.ToString("C")</h2>
+                        <h2>@resumo.ValorTotalPedidos.ToString("C", CultureInfo.GetCultureInfo("pt-BR"))</h2>
                     </div>
                 </div>
             </div>
@@ -118,7 +118,7 @@
                                     <tr>
                                         <td>@produto.NomeProduto</td>
                                         <td>@produto.Quantidade</td>
-                                        <td>@produto.ValorTotal.ToString("C")</td>
+                                        <td>@produto.ValorTotal.ToString("C", CultureInfo.GetCultureInfo("pt-BR"))</td>
                                     </tr>
                                 }
                             </tbody>
