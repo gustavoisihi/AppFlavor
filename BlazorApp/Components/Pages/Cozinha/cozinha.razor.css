@@ -281,3 +281,19 @@
         background: #fca5a5;
     }
 }
+
+.kds-order-card.pedido-recente {
+    border: 2px solid #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+    animation: destacar-pedido 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes destacar-pedido {
+    from {
+        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.10);
+    }
+
+    to {
+        box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.30);
+    }
+}

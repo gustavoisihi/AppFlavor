@@ -73,7 +73,7 @@
 
                 @foreach (var pedido in PedidosNovos)
                 {
-                    <article class="kds-order-card novo" @key="pedido.Id">
+                    <article class="kds-order-card novo @(pedidosDestaque.Contains(pedido.Id) ? "pedido-recente" : "")" @key="pedido.Id">
                         <div class="kds-order-header">
                             <strong>#@pedido.Id</strong>
                             <span class="kds-timer @ClasseTempo(pedido.CriadoEm)">
@@ -290,6 +290,8 @@
     private bool primeiraCarga = true;
     private HashSet<long> idsPedidosAnteriores = new();
 
+    private HashSet<long> pedidosDestaque = new();
+
     protected override async Task OnInitializedAsync()
     {
         await CarregarPedidosAsync();
@@ -319,9 +321,16 @@
                 .Select(p => p.Id)
                 .ToHashSet();
 
-            bool existemNovosPedidos =
-                !primeiraCarga &&
-                idsAtuais.Except(idsPedidosAnteriores).Any();
+            var novosPedidos = primeiraCarga
+            ? new List<long>()
+            : idsAtuais.Except(idsPedidosAnteriores).ToList();
+
+            bool existemNovosPedidos = novosPedidos.Count > 0;
+
+            foreach (var id in novosPedidos)
+            {
+                pedidosDestaque.Add(id);
+            }
 
             pedidos = pedidosAtualizados;
             idsPedidosAnteriores = idsAtuais;
@@ -364,6 +373,8 @@
         {
             await PedidoService.AtualizarStatusPreparoAsync(
                 pedidoId, novoStatus);
+
+            pedidosDestaque.Remove(pedidoId);
 
             await CarregarPedidosAsync();
         }
