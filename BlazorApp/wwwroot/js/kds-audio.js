@@ -42,5 +42,15 @@
         oscillator.stop(audioContext.currentTime + 0.4);
     }
 
-    return { ativar, tocar };
+    async function alternarTelaCheia() {
+        if (!document.fullscreenElement) {
+            await document.documentElement.requestFullscreen();
+        } else {
+            await document.exitFullscreen();
+        }
+
+        return !!document.fullscreenElement;
+    }
+
+    return { ativar, tocar, alternarTelaCheia };
 })();

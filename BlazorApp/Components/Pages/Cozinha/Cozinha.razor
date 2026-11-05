@@ -33,15 +33,25 @@
                 <span>Prontos</span>
             </div>
 
-            <button class="kds-sound"
-                    @onclick="AlternarSomAsync">
-                @(somAtivo ? "🔊 Som ativado" : "🔇 Som desativado")
+            <button class="kds-sound @(somAtivo ? "ativo" : "inativo")"
+                    @onclick="AlternarSomAsync"
+                    aria-pressed="@somAtivo"
+                    title="Ativar ou desativar alerta sonoro">
+
+                <i class="bi @(somAtivo ? "bi-volume-up-fill" : "bi-volume-mute-fill")"></i>
+
+                <span>@(somAtivo ? "Som ligado" : "Som desligado")</span>
             </button>
 
             <button class="kds-refresh"
                     @onclick="CarregarPedidosAsync"
                     disabled="@carregando">
                 ↻ Atualizar
+            </button>
+
+            <button class="kds-fullscreen"
+                    @onclick="AlternarTelaCheiaAsync">
+                @(telaCheia ? "⛶ Sair da tela cheia" : "⛶ Tela cheia")
             </button>
         </div>
     </header>
@@ -292,6 +302,8 @@
 
     private HashSet<long> pedidosDestaque = new();
 
+    private bool telaCheia;
+
     protected override async Task OnInitializedAsync()
     {
         await CarregarPedidosAsync();
@@ -487,6 +499,19 @@
         catch (Microsoft.JSInterop.JSException)
         {
             erro = "Não foi possível ativar o áudio.";
+        }
+    }
+
+    private async Task AlternarTelaCheiaAsync()
+    {
+        try
+        {
+            telaCheia = await JS.InvokeAsync<bool>(
+                "kdsAudio.alternarTelaCheia");
+        }
+        catch (Microsoft.JSInterop.JSException)
+        {
+            erro = "Não foi possível alterar o modo de tela cheia.";
         }
     }
 }
