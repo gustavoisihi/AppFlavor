@@ -5,6 +5,7 @@
 @using BlazorApp.Models.Enums
 @using BlazorApp.Services
 @inject IPedidoService PedidoService
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Cozinha</PageTitle>
@@ -31,6 +32,11 @@
                 <strong>@PedidosProntos.Count()</strong>
                 <span>Prontos</span>
             </div>
+
+            <button class="kds-sound"
+                    @onclick="AlternarSomAsync">
+                @(somAtivo ? "🔊 Som ativado" : "🔇 Som desativado")
+            </button>
 
             <button class="kds-refresh"
                     @onclick="CarregarPedidosAsync"
@@ -280,6 +286,10 @@
     private IEnumerable<PedidoCozinhaDto> PedidosProntos => pedidos.Where(p => p.StatusPreparo == nameof(StatusPreparo.Pronto));
     private PeriodicTimer? timerRelogio;
 
+    private bool somAtivo;
+    private bool primeiraCarga = true;
+    private HashSet<long> idsPedidosAnteriores = new();
+
     protected override async Task OnInitializedAsync()
     {
         await CarregarPedidosAsync();
@@ -302,7 +312,33 @@
 
         try
         {
-            pedidos = await PedidoService.ListarPedidosCozinhaAsync();
+            var pedidosAtualizados =
+                await PedidoService.ListarPedidosCozinhaAsync();
+
+            var idsAtuais = pedidosAtualizados
+                .Select(p => p.Id)
+                .ToHashSet();
+
+            bool existemNovosPedidos =
+                !primeiraCarga &&
+                idsAtuais.Except(idsPedidosAnteriores).Any();
+
+            pedidos = pedidosAtualizados;
+            idsPedidosAnteriores = idsAtuais;
+
+            primeiraCarga = false;
+
+            if (existemNovosPedidos && somAtivo)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("kdsAudio.tocar");
+                }
+                catch (Microsoft.JSInterop.JSException)
+                {
+                    // Evita que uma falha no áudio interrompa a atualização.
+                }
+            }
         }
         catch (Exception)
         {
@@ -422,5 +458,24 @@
             return "atencao";
 
         return "normal";
+    }
+
+    private async Task AlternarSomAsync()
+    {
+        if (somAtivo)
+        {
+            somAtivo = false;
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("kdsAudio.ativar");
+            somAtivo = true;
+        }
+        catch (Microsoft.JSInterop.JSException)
+        {
+            erro = "Não foi possível ativar o áudio.";
+        }
     }
 }
